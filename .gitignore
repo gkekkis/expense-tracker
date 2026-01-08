@@ -1,0 +1,17 @@
+# Files
+.env
+settings.json
+.pre-commit-config.yaml
+pyproject.toml
+*.txt
+*.pyc
+
+#Folders
+data/
+.venv/
+.vscode/
+.idea/
+src/config files
+notebooks/
+output_dir/
+*/__pycache__/
