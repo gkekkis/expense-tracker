@@ -4,6 +4,7 @@ import reflex as rx
 
 database_url = os.getenv("DATABASE_URL", "sqlite:///reflex.db")
 
+
 config = rx.Config(
     app_name="expense_ui",
     frontend_port=3000,

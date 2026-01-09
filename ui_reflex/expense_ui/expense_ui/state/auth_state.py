@@ -1,12 +1,9 @@
-# ui_reflex/expense_ui/expense_ui/state/auth_state.py
 import re
 
 import reflex as rx
 
 
 class AuthState(rx.State):
-    """Dev auth via UUID stored in browser LocalStorage."""
-
     user_id: str = rx.LocalStorage(name="user_id")
     user_id_input: str = ""
     error: str = ""
@@ -39,6 +36,6 @@ class AuthState(rx.State):
         return rx.redirect("/login")
 
     def require_login(self):
-        """Call this from a page's on_load to protect it."""
+        """Use this in on_load for protected pages."""
         if not self.is_logged_in:
             return rx.redirect("/login")
