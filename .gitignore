@@ -16,3 +16,9 @@ notebooks/
 output_dir/
 */__pycache__/
 frontend_react_archived/
+
+# Reflex
+ui_reflex/**/.web/
+ui_reflex/**/__pycache__/
+ui_reflex/**/.reflex/
+
