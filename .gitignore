@@ -15,3 +15,4 @@ src/config files
 notebooks/
 output_dir/
 */__pycache__/
+frontend_react_archived/
