@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
@@ -11,37 +12,40 @@ from ...services.account_service import (
     create_account,
     get_account_by_id,
     get_account_memberships_by_id,
-    get_all_accounts,
+    get_all_accounts_for_user,
     update_account_by_id,
 )
-from ..dependencies import get_db
+from ..dependencies import get_current_user_id, get_db
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])
 
+CurrentUser = Annotated[UUID, Depends(get_current_user_id)]
+Db = Annotated[Session, Depends(get_db)]
+
 
 @router.post("/", response_model=AccountRead)
-def create_account_endpoint(account_in: AccountCreate, db: Session = Depends(get_db)) -> AccountRead:
-    db_account = create_account(session=db, account_in=account_in)
+def create_account_endpoint(account_in: AccountCreate, current_user_id: CurrentUser, db: Db) -> AccountRead:
+    db_account = create_account(session=db, account_in=account_in, current_user_id=current_user_id)
     db.commit()
     db.refresh(db_account)
     return db_account
 
 
 @router.get("/", response_model=list[AccountRead])
-def get_all_accounts_endpoint(db: Session = Depends(get_db)) -> list[AccountRead]:
-    db_accounts = get_all_accounts(session=db)
+def get_all_accounts_endpoint(current_user_id: CurrentUser, db: Db) -> list[AccountRead]:
+    db_accounts = get_all_accounts_for_user(session=db, current_user_id=current_user_id)
     return db_accounts
 
 
 @router.get("/{account_id}", response_model=AccountRead)
-def get_account_by_id_endpoint(account_id: UUID, db: Session = Depends(get_db)) -> AccountRead:
+def get_account_by_id_endpoint(account_id: UUID, db: Db) -> AccountRead:
     db_account = get_account_by_id(session=db, account_id=account_id)
     return db_account
 
 
 @router.get("/{account_id}/memberships", response_model=list[MembershipRead])
 def get_account_memberships_by_id_endpoint(
-    account_id: UUID, current_user_id: UUID, db: Session = Depends(get_db)
+    account_id: UUID, current_user_id: CurrentUser, db: Db
 ) -> list[MembershipRead]:
     all_account_memberships = get_account_memberships_by_id(
         session=db, account_id=account_id, current_user_id=current_user_id
@@ -52,7 +56,7 @@ def get_account_memberships_by_id_endpoint(
 
 @router.patch("/{account_id}", response_model=AccountRead)
 def update_account_by_id_endpoint(
-    account_id: UUID, account_update: AccountUpdate, current_user_id: UUID, db: Session = Depends(get_db)
+    account_id: UUID, account_update: AccountUpdate, current_user_id: CurrentUser, db: Db
 ) -> AccountRead:
     updated_account = update_account_by_id(
         session=db,

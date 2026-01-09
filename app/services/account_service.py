@@ -26,17 +26,31 @@ from ..errors.errors import (
 from ..schemas.account import AccountCreate  # noqa: TCH001
 
 
-def create_account(session: Session, account_in: AccountCreate) -> Account:
-    db_account = Account(name=account_in.name, status=account_in.status)
+def create_account(session: Session, account_in: AccountCreate, current_user_id: UUID) -> Account:
+    db_account = Account(name=account_in.name, status=AccountStatus.ACTIVE)
 
     session.add(db_account)
     session.flush()
 
+    # Check if membership exists
+    membership_exists = (
+        session.scalar(
+            select(1).where(Membership.account_id == db_account.id, Membership.user_id == current_user_id).limit(1)
+        )
+        is not None
+    )
+
+    if not membership_exists:
+        db_membership = Membership(user_id=current_user_id, account_id=db_account.id, role=MembershipRole.OWNER)
+        session.add(db_membership)
+        session.flush()
+
     return db_account
 
 
-def get_all_accounts(session: Session) -> Sequence[Account]:
-    return session.scalars(select(Account)).all()
+def get_all_accounts_for_user(session: Session, current_user_id: UUID) -> Sequence[Account]:
+    accounts = session.query(Account).join(Membership).filter(Membership.user_id == current_user_id).all()
+    return accounts
 
 
 def get_account_by_id(session: Session, account_id: UUID) -> Account:

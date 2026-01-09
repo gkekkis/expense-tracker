@@ -13,7 +13,6 @@ from ..domain.accounts.account import AccountStatus
 
 class AccountCreate(BaseModel):
     name: str
-    status: AccountStatus = AccountStatus.ACTIVE
 
     @field_validator("name", mode="before")
     @classmethod
