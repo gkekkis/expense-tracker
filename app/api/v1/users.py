@@ -39,5 +39,4 @@ def get_user_by_id_endpoint(user_id: UUID, db: Db) -> UserRead:
 
 @router.get("/me/accounts", response_model=list[AccountRead])
 def get_accounts_by_id_endpoint(current_user_id: CurrentUser, db: Db) -> list[AccountRead]:
-    print(f"User ID: {current_user_id}", flush=True)
     return get_accounts_by_id(session=db, current_user_id=current_user_id)
