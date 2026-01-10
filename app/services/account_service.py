@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session  # noqa: TCH002
 
 from ..db.models.account import Account
+from ..db.models.expense import Expense
 from ..db.models.membership import Membership, MembershipRole
 from ..domain.accounts.account import AccountStatus
 from ..domain.operations import Operation
@@ -66,6 +67,33 @@ def get_account_memberships_by_id(session: Session, account_id: UUID, current_us
     account_memberships = session.scalars(select(Membership).where(Membership.account_id == account_id)).all()
 
     return account_memberships
+
+
+def get_account_expenses_by_id(session: Session, account_id: UUID, current_user_id: UUID) -> Sequence[Expense]:
+    db_account = session.get(Account, account_id)
+    # Check if account exists
+    if db_account is None:
+        raise AccountDoesNotExistError(account_id=account_id)
+
+    # Check if account is ACTIVE and disallow mutations when INACTIVE
+    ensure_account_mutable(account_id=account_id, account_status=db_account.status, operation=Operation.EXPENSE_READ)
+
+    # Check if current user is a member of the account
+    is_a_member = (
+        session.scalar(
+            select(1).where(Membership.account_id == account_id, Membership.user_id == current_user_id).limit(1)
+        )
+        is not None
+    )
+
+    if not is_a_member:
+        raise UserNotMemberOfTheAccountError(user_id=current_user_id, account_id=account_id)
+
+    account_expenses = session.scalars(
+        select(Expense).where(Expense.account_id == account_id).order_by(Expense.expense_date.desc())
+    ).all()
+
+    return account_expenses
 
 
 def update_account_by_id(
