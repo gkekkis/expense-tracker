@@ -36,10 +36,14 @@ def get_user_by_id(session: Session, user_id: UUID) -> User:
 
 
 def get_accounts_by_id(session: Session, current_user_id: UUID) -> Sequence[Account]:
-    # Get all current user accounts
+    # Check if user exists
+    db_user = session.get(User, current_user_id)
+    if db_user is None:
+        raise UserDoesNotExistError(user_id=current_user_id)
 
+    # Get all current user accounts
     current_user_accounts = session.scalars(
-        select(Account).join(Membership).where(Membership.id == current_user_id)
+        select(Account).join(Membership).where(Membership.user_id == current_user_id)
     ).all()
 
     if current_user_accounts is None or not len(current_user_accounts):
