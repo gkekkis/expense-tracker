@@ -21,6 +21,11 @@ class UserNotMemberOfTheAccountError(ExpenseTrackerProjectError):
         self.account_id = account_id
 
 
+class UserHasNoAccountsError(ExpenseTrackerProjectError):
+    def __init__(self, user_id: UUID):
+        self.user_id = user_id
+
+
 # ACCOUNTS
 class AccountDoesNotExistError(ExpenseTrackerProjectError):
     def __init__(self, account_id: UUID):

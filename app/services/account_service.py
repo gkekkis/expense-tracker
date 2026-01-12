@@ -6,24 +6,28 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from typing import Sequence
-from uuid import UUID
+from typing import Sequence  # noqa: E402
+from uuid import UUID  # noqa: E402, TCH003
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session  # noqa: TCH002
+from sqlalchemy import select  # noqa: E402
+from sqlalchemy.orm import Session  # noqa: TCH002, E402
 
-from ..db.models.account import Account
-from ..db.models.membership import Membership, MembershipRole
-from ..domain.accounts.account import AccountStatus
-from ..domain.operations import Operation
-from ..domain.policies.account_state import ensure_account_mutable, ensure_inactive_account_reactivation_only
-from ..errors.errors import (
+from ..db.models.account import Account  # noqa: E402
+from ..db.models.expense import Expense  # noqa: E402
+from ..db.models.membership import Membership, MembershipRole  # noqa: E402
+from ..domain.accounts.account import AccountStatus  # noqa: E402
+from ..domain.operations import Operation  # noqa: E402
+from ..domain.policies.account_state import (  # noqa: E402
+    ensure_account_mutable,
+    ensure_inactive_account_reactivation_only,
+)
+from ..errors.errors import (  # noqa: E402
     AccountDoesNotExistError,
     AccountUpdateForbiddenError,
     AccountUpdateNoFieldsProvidedError,
     UserNotMemberOfTheAccountError,
 )
-from ..schemas.account import AccountCreate  # noqa: TCH001
+from ..schemas.account import AccountCreate  # noqa: TCH001, E402
 
 
 def create_account(session: Session, account_in: AccountCreate) -> Account:
@@ -66,6 +70,33 @@ def get_account_memberships_by_id(session: Session, account_id: UUID, current_us
     account_memberships = session.scalars(select(Membership).where(Membership.account_id == account_id)).all()
 
     return account_memberships
+
+
+def get_account_expenses_by_id(session: Session, account_id: UUID, current_user_id: UUID) -> Sequence[Expense]:
+    db_account = session.get(Account, account_id)
+    # Check if account exists
+    if db_account is None:
+        raise AccountDoesNotExistError(account_id=account_id)
+
+    # Check if account is ACTIVE and disallow mutations when INACTIVE
+    ensure_account_mutable(account_id=account_id, account_status=db_account.status, operation=Operation.EXPENSE_READ)
+
+    # Check if current user is a member of the account
+    is_a_member = (
+        session.scalar(
+            select(1).where(Membership.account_id == account_id, Membership.user_id == current_user_id).limit(1)
+        )
+        is not None
+    )
+
+    if not is_a_member:
+        raise UserNotMemberOfTheAccountError(user_id=current_user_id, account_id=account_id)
+
+    account_expenses = session.scalars(
+        select(Expense).where(Expense.account_id == account_id).order_by(Expense.expense_date.desc())
+    ).all()
+
+    return account_expenses
 
 
 def update_account_by_id(

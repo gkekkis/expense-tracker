@@ -22,6 +22,7 @@ from ...errors.errors import (
     MembershipUpdateForbiddenError,
     MembershipUpdateNoFieldsProvidedError,
     UserDoesNotExistError,
+    UserHasNoAccountsError,
     UserNotMemberOfTheAccountError,
 )
 
@@ -48,6 +49,17 @@ def register_exception_handlers(app: FastAPI):
             content={
                 "error_code": "USER_NOT_MEMBER_OF_THE_ACCOUNT",
                 "detail": f"User with id `{exc.user_id}` is not a member of the account with id `{exc.account_id}`.",
+                "path": request.url.path,
+            },
+        )
+
+    @app.exception_handler(UserHasNoAccountsError)
+    async def user_has_no_accounts_handler(request: Request, exc: UserHasNoAccountsError) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={
+                "error_code": "USER_HAS_NO_ACCOUNTS",
+                "detail": f"User with id `{exc.user_id}` has no accounts.",
                 "path": request.url.path,
             },
         )

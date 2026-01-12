@@ -7,6 +7,7 @@ pyproject.toml
 *.pyc
 
 #Folders
+misc/
 data/
 .venv/
 .vscode/
@@ -15,3 +16,10 @@ src/config files
 notebooks/
 output_dir/
 */__pycache__/
+frontend_react_archived/
+
+# Reflex
+ui_reflex/**/.web/
+ui_reflex/**/__pycache__/
+ui_reflex/**/.reflex/
+

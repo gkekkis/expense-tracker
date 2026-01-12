@@ -11,7 +11,6 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 
-
 # 2. Read DB settings from environment
 db_user = os.getenv("DB_USER")
 db_password = os.getenv("DB_PASSWORD")
@@ -40,9 +39,10 @@ if missing_vars:
     )
 
 # 4. Build the database URL using the env values
-DATABASE_URL = (
-    f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
-)
+if not os.getenv("DEV"):
+    DATABASE_URL = f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+else:
+    DATABASE_URL = os.getenv("TEST_DATABASE_URL")
 
 # 5. Create the SQLAlchemy engine
 engine: Engine = create_engine(DATABASE_URL)
