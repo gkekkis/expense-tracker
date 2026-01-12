@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
 from typing import Any, Literal
 
 import httpx
@@ -5,15 +8,12 @@ import httpx
 from ..config import FASTAPI_BASE_URL
 
 
+@dataclass
 class ApiError(Exception):
-    """UI-facing API error."""
-
-    def __init__(self, message: str, status_code: int, error_code: str | None = None, payload: Any | None = None):
-        super().__init__(message)
-        self.message = message
-        self.status_code = status_code
-        self.error_code = error_code
-        self.payload = payload
+    message: str
+    status_code: int
+    error_code: str | None = None
+    payload: Any | None = None
 
 
 def request(
@@ -23,12 +23,7 @@ def request(
     json: dict | None = None,
     params: dict | None = None,
 ) -> dict | list:
-    """
-    Generic HTTP client for calling the FastAPI backend.
-
-    Returns parsed JSON (dict or list) on success.
-    Raises ApiError on any non-2xx response.
-    """
+    """Call FastAPI backend and return parsed JSON (dict|list). Raise ApiError otherwise."""
     url = FASTAPI_BASE_URL.rstrip("/") + "/" + path.lstrip("/")
 
     response = httpx.request(
@@ -41,30 +36,32 @@ def request(
         timeout=10,
     )
 
-    # Try to parse JSON if possible
-    payload: Any | None = None
+    payload: Any | None
     try:
         payload = response.json()
     except Exception:
         payload = None
 
-    # Success path
     if response.is_success:
-        return payload  # dict or list
+        return payload
 
-    # Error path: normalize all errors into ApiError
     message = f"Request failed ({response.status_code})"
     error_code = None
 
+    # Your custom error format: {"error_code": "...", "detail": "...", "path": "..."}
     if isinstance(payload, dict):
-        # Your custom backend error format
         if "detail" in payload:
             message = payload["detail"]
         if "error_code" in payload:
             error_code = payload["error_code"]
 
-    elif isinstance(payload, list):
-        # FastAPI 422 validation errors
-        message = " | ".join(f"{'.'.join(map(str, item.get('loc', [])))}: {item.get('msg', '')}" for item in payload)
+    # FastAPI 422 format
+    if isinstance(payload, dict) and "detail" in payload and isinstance(payload["detail"], list):
+        parts = []
+        for item in payload["detail"]:
+            loc = ".".join(str(x) for x in item.get("loc", []))
+            msg = item.get("msg", "")
+            parts.append(f"{loc}: {msg}")
+        message = " | ".join(parts)
 
     raise ApiError(message=message, status_code=response.status_code, error_code=error_code, payload=payload)
