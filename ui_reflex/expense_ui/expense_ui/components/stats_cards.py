@@ -1,122 +1,45 @@
 import reflex as rx
-from reflex.components.radix.themes.base import (
-    LiteralAccentColor,
-)
 
-from ..backend.backend import State
+from ..state.account_detail_state import AccountDetailState
+from ..state.accounts_state import AccountsState
 
 
-def _arrow_badge(arrow_icon: str, percentage_change: float, arrow_color: str):
-    return rx.badge(
-        rx.icon(
-            tag=arrow_icon,
-            color=rx.color(arrow_color, 9),
-        ),
-        rx.text(
-            f"{percentage_change}%",
-            size="2",
-            color=rx.color(arrow_color, 9),
-            weight="medium",
-        ),
-        color_scheme=arrow_color,
-        radius="large",
-        align_items="center",
-    )
-
-
-def stats_card(
-    stat_name: str,
-    value: int,
-    prev_value: int,
-    percentage_change: float,
-    icon: str,
-    icon_color: LiteralAccentColor,
-    extra_char: str = "",
-) -> rx.Component:
+def _stat_card(icon: str, title: str, value):
     return rx.card(
         rx.hstack(
+            rx.badge(rx.icon(icon, size=20), radius="full", color_scheme="grass", variant="soft"),
             rx.vstack(
-                rx.hstack(
-                    rx.hstack(
-                        rx.icon(
-                            tag=icon,
-                            size=22,
-                            color=rx.color(icon_color, 11),
-                        ),
-                        rx.text(
-                            stat_name,
-                            size="4",
-                            weight="medium",
-                            color=rx.color("gray", 11),
-                        ),
-                        spacing="2",
-                        align="center",
-                    ),
-                    rx.cond(
-                        value > prev_value,
-                        _arrow_badge("trending-up", percentage_change, "grass"),
-                        _arrow_badge("trending-down", percentage_change, "tomato"),
-                    ),
-                    justify="between",
-                    width="100%",
-                ),
-                rx.hstack(
-                    rx.heading(
-                        f"{extra_char}{value}",
-                        size="7",
-                        weight="bold",
-                    ),
-                    rx.text(
-                        f"from {extra_char}{prev_value}",
-                        size="3",
-                        color=rx.color("gray", 10),
-                    ),
-                    spacing="2",
-                    align_items="end",
-                ),
+                rx.text(title, color=rx.color("gray", 11), size="2"),
+                rx.heading(value, size="6"),
+                spacing="1",
                 align_items="start",
-                justify="between",
-                width="100%",
             ),
-            align_items="start",
-            width="100%",
-            justify="between",
+            spacing="3",
+            align="center",
         ),
-        size="3",
         width="100%",
-        max_width="22rem",
     )
 
 
-def stats_cards_group() -> rx.Component:
-    return rx.flex(
-        stats_card(
-            "Total Customers",
-            State.current_month_values.num_customers,
-            State.previous_month_values.num_customers,
-            State.customers_change,
-            "users",
-            "blue",
-        ),
-        stats_card(
-            "Total Payments",
-            State.current_month_values.total_payments,
-            State.previous_month_values.total_payments,
-            State.payments_change,
-            "dollar-sign",
-            "orange",
-            "$",
-        ),
-        stats_card(
-            "Total Delivers",
-            State.current_month_values.num_delivers,
-            State.previous_month_values.num_delivers,
-            State.delivers_change,
-            "truck",
-            "ruby",
-        ),
-        spacing="5",
+def accounts_stats_cards() -> rx.Component:
+    return rx.grid(
+        _stat_card("layers", "Total Accounts", AccountsState.total_accounts),
+        _stat_card("badge-check", "Active Accounts", AccountsState.active_accounts),
+        _stat_card("ban", "Inactive Accounts", AccountsState.inactive_accounts),
+        columns=rx.breakpoints(initial="1", sm="2", lg="3"),
+        spacing="4",
         width="100%",
-        wrap="wrap",
-        display=["none", "none", "flex"],
+        margin_top="1em",
+    )
+
+
+def expenses_stats_cards() -> rx.Component:
+    return rx.grid(
+        _stat_card("receipt_euro", "Total Expenses", AccountDetailState.total_expenses),
+        _stat_card("wallet", "Total Amount", AccountDetailState.total_amount),
+        _stat_card("tag", "Top Category", AccountDetailState.top_category),
+        columns=rx.breakpoints(initial="1", sm="2", lg="3"),
+        spacing="4",
+        width="100%",
+        margin_top="1em",
     )

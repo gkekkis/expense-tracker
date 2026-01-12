@@ -1,12 +1,14 @@
 import reflex as rx
 
-from ..config import GET_ACCOUNTS_PATH
+from ..config import GET_MY_ACCOUNTS_PATH
+from ..models import Account
 from ..services.backend_client import ApiError, request
+from .app_state import AppState
 from .auth_state import AuthState
 
 
-class AccountsState(rx.State):
-    accounts: list[dict] = []
+class AccountsState(AppState):
+    accounts: list[Account] = []
     loading: bool = False
     error: str = ""
     error_code: str = ""
@@ -19,13 +21,12 @@ class AccountsState(rx.State):
         try:
             auth = await self.get_state(AuthState)
             user_id = (auth.user_id or "").strip()
-
             if not user_id:
                 self.accounts = []
                 return
 
-            data = request(method="GET", path=GET_ACCOUNTS_PATH, user_id=user_id)
-            self.accounts = data if isinstance(data, list) else []
+            data = request(method="GET", path=GET_MY_ACCOUNTS_PATH, user_id=user_id)
+            self.accounts = [Account.model_validate(x) for x in data] if isinstance(data, list) else []
 
         except ApiError as e:
             self.error = e.message
@@ -34,3 +35,15 @@ class AccountsState(rx.State):
 
         finally:
             self.loading = False
+
+    @rx.var
+    def total_accounts(self) -> int:
+        return len(self.accounts)
+
+    @rx.var
+    def active_accounts(self) -> int:
+        return sum(1 for a in self.accounts if a.status == "ACTIVE")
+
+    @rx.var
+    def inactive_accounts(self) -> int:
+        return sum(1 for a in self.accounts if a.status == "INACTIVE")
