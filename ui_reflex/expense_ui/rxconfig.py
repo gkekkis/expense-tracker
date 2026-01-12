@@ -12,4 +12,5 @@ config = rx.Config(
     api_url="http://localhost:8001",
     db_url=database_url,
     plugins=[rx.plugins.SitemapPlugin()],
+    initial_color_mode="system",
 )
