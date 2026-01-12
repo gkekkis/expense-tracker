@@ -1,8 +1,15 @@
 import os
 
 import reflex as rx
+from dotenv import load_dotenv
 
-database_url = os.getenv("DATABASE_URL", "sqlite:///reflex.db")
+dotenv_loaded = load_dotenv("../../.env")
+
+
+if not os.getenv("DEV"):
+    database_url = os.getenv("DATABASE_URL", "sqlite:///reflex.db")
+else:
+    database_url = os.getenv("TEST_DATABASE_URL", "sqlite:///reflex.db")
 
 
 config = rx.Config(
