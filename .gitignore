@@ -7,6 +7,7 @@ pyproject.toml
 *.pyc
 
 #Folders
+misc/
 data/
 .venv/
 .vscode/
