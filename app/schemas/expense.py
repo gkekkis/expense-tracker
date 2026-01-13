@@ -128,3 +128,27 @@ class ExpenseUpdate(BaseModel):
         if value > date.today():
             raise ValueError("expense_date cannot be in the future.")
         return value
+
+
+class ExpenseFilterParams(BaseModel):
+    # Search & Filter
+    account_id: UUID
+    start_date: date | None = None
+    end_date: date | None = None
+    category: ExpenseCategory | None = None
+    min_amount: float | None = None
+    max_amount: float | None = None
+    search_query: UUID | None = None
+    user_id: UUID | None = None
+
+    # Pagination & Offset
+    limit: int = 20
+    offset: int = 0
+
+
+class PaginatedExpenseResponse(BaseModel):
+    items: list[ExpenseRead]
+    total_amount: float
+    total_count: int
+    limit: int
+    offset: int

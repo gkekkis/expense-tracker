@@ -7,7 +7,7 @@ from decimal import Decimal
 from typing import Sequence
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session  # noqa: TCH002
 
 from ..db.models.account import Account
@@ -29,7 +29,9 @@ from ..errors.errors import (
 from ..schemas.expense import (
     ExpenseCategory,
     ExpenseCreate,  # noqa: TCH001
+    ExpenseFilterParams,
 )
+from .account_service import get_account_by_id
 
 
 def create_expense(session: Session, expense_in: ExpenseCreate, created_by_user_id: UUID | None) -> Expense:
@@ -187,3 +189,58 @@ def delete_expense_by_id(session: Session, expense_id: UUID, current_user_id: UU
     session.delete(db_expense)
     session.flush()
     return None
+
+
+def get_filtered_expenses(session: Session, params: ExpenseFilterParams, current_user_id: UUID):
+    # 1. Reuse existing account logic
+    db_account = get_account_by_id(session=session, account_id=params.account_id)
+
+    ensure_account_mutable(
+        account_id=params.account_id, account_status=db_account.status, operation=Operation.EXPENSE_READ
+    )
+
+    # 2. Membership Check (Defense in Depth)
+    is_a_member = (
+        session.scalar(
+            select(1).where(Membership.account_id == params.account_id, Membership.user_id == current_user_id).limit(1)
+        )
+        is not None
+    )
+
+    if not is_a_member:
+        raise UserNotMemberOfTheAccountError(user_id=current_user_id, account_id=params.account_id)
+    # 1. Base Query
+    query = select(Expense).where(Expense.account_id == params.account_id)
+
+    # 2. Robust Search Logic
+    if params.search_query:
+        search_input = params.search_query.strip()
+        if search_input:
+            # We use 'fat-arrow' formatting for prefix matching
+            # This handles "shop" matching "Shopping" or "Shop"
+            search_str = f"{search_input}:*"
+            query = query.where(
+                func.to_tsvector("english", Expense.description).op("@@")(func.to_tsquery("english", search_str))
+            )
+
+    # 3. Apply Filters
+    if params.start_date:
+        query = query.where(Expense.expense_date >= params.start_date)
+    if params.category:
+        query = query.where(Expense.category == params.category)
+
+    # --- AGGREGATION (The Warning Fix) ---
+    subq = query.subquery()
+
+    # Total Count
+    total_count = session.execute(select(func.count()).select_from(subq)).scalar() or 0
+
+    # Total Sum - Selecting from subq.c (subquery columns) prevents Cartesian Product
+    total_sum = session.execute(select(func.sum(subq.c.amount)).select_from(subq)).scalar() or 0
+
+    # 4. Final Data Fetch
+    final_query = query.order_by(Expense.expense_date.desc())
+    final_query = final_query.offset(params.offset).limit(params.limit)
+    results = session.execute(final_query).scalars().all()
+
+    return results, total_count, total_sum
