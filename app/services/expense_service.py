@@ -7,7 +7,7 @@ from decimal import Decimal
 from typing import Sequence
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session  # noqa: TCH002
 
 from ..db.models.account import Account
@@ -29,6 +29,7 @@ from ..errors.errors import (
 from ..schemas.expense import (
     ExpenseCategory,
     ExpenseCreate,  # noqa: TCH001
+    ExpenseFilterParams,
 )
 
 
@@ -187,3 +188,41 @@ def delete_expense_by_id(session: Session, expense_id: UUID, current_user_id: UU
     session.delete(db_expense)
     session.flush()
     return None
+
+
+def get_filtered_expenses(session: Session, params: ExpenseFilterParams):
+    # 1. Base Query
+    query = select(Expense).where(Expense.account_id == params.account_id)
+
+    # 2. Robust Search Logic
+    if params.search_query:
+        search_input = params.search_query.strip()
+        if search_input:
+            # We use 'fat-arrow' formatting for prefix matching
+            # This handles "shop" matching "Shopping" or "Shop"
+            search_str = f"{search_input}:*"
+            query = query.where(
+                func.to_tsvector("english", Expense.description).op("@@")(func.to_tsquery("english", search_str))
+            )
+
+    # 3. Apply Filters
+    if params.start_date:
+        query = query.where(Expense.expense_date >= params.start_date)
+    if params.category:
+        query = query.where(Expense.category == params.category)
+
+    # --- AGGREGATION (The Warning Fix) ---
+    subq = query.subquery()
+
+    # Total Count
+    total_count = session.execute(select(func.count()).select_from(subq)).scalar() or 0
+
+    # Total Sum - Selecting from subq.c (subquery columns) prevents Cartesian Product
+    total_sum = session.execute(select(func.sum(subq.c.amount)).select_from(subq)).scalar() or 0
+
+    # 4. Final Data Fetch
+    final_query = query.order_by(Expense.expense_date.desc())
+    final_query = final_query.offset(params.offset).limit(params.limit)
+    results = session.execute(final_query).scalars().all()
+
+    return results, total_count, total_sum

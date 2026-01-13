@@ -6,12 +6,13 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
-from ...schemas.expense import ExpenseCreate, ExpenseRead, ExpenseUpdate
+from ...schemas.expense import ExpenseCreate, ExpenseFilterParams, ExpenseRead, ExpenseUpdate, PaginatedExpenseResponse
 from ...services.expense_service import (
     create_expense,
     delete_expense_by_id,
     get_all_expenses,
     get_expense_by_id,
+    get_filtered_expenses,
     update_expense_by_id,
 )
 from ..dependencies import get_current_user_id, get_db
@@ -66,3 +67,21 @@ def update_expense_by_id_endpoint(
 def delete_expense_by_id_endpoint(expense_id: UUID, current_user_id: CurrentUser, db: Db) -> None:
     delete_expense_by_id(session=db, expense_id=expense_id, current_user_id=current_user_id)
     db.commit()
+
+
+@router.post("/search", response_model=PaginatedExpenseResponse)
+def get_filtered_expenses_endpoint(
+    expense_filters: ExpenseFilterParams,
+    db: Db,  # Assuming Db is your Session dependency
+) -> PaginatedExpenseResponse:
+    # Unpack the tuple
+    items, total, total_sum = get_filtered_expenses(session=db, params=expense_filters)
+
+    # Return JSON response
+    return PaginatedExpenseResponse(
+        items=items,
+        total_amount=total_sum,
+        total_count=total,
+        limit=expense_filters.limit,
+        offset=expense_filters.offset,
+    )
