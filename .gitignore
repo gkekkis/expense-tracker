@@ -5,6 +5,7 @@ settings.json
 pyproject.toml
 *.txt
 *.pyc
+tests/*.db
 
 #Folders
 misc/

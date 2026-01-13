@@ -5,7 +5,7 @@ from __future__ import annotations
 import datetime
 from uuid import uuid4
 
-from sqlalchemy import Column, Date, DateTime, Enum, ForeignKey, Index, Numeric, String, func, text
+from sqlalchemy import Column, Date, DateTime, Enum, ForeignKey, Index, Numeric, String, event, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -49,3 +49,14 @@ class Expense(Base):
         # Using 'english' config ignores common words like 'the' or 'a'.
         Index("ix_expenses_description_fts", text("to_tsvector('english', description)"), postgresql_using="gin"),
     )
+
+
+# Place this immediately after the class
+@event.listens_for(Expense.__table__, "before_create")
+def remove_search_index(target, connection, **kw):
+    """
+    Forcefully drops the GIN index from the DDL instructions
+    if the database engine is SQLite.
+    """
+    if connection.engine.dialect.name == "sqlite":
+        target.indexes = {idx for idx in target.indexes if idx.name != "ix_expenses_description_fts"}

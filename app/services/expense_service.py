@@ -31,6 +31,7 @@ from ..schemas.expense import (
     ExpenseCreate,  # noqa: TCH001
     ExpenseFilterParams,
 )
+from .account_service import get_account_by_id
 
 
 def create_expense(session: Session, expense_in: ExpenseCreate, created_by_user_id: UUID | None) -> Expense:
@@ -190,7 +191,24 @@ def delete_expense_by_id(session: Session, expense_id: UUID, current_user_id: UU
     return None
 
 
-def get_filtered_expenses(session: Session, params: ExpenseFilterParams):
+def get_filtered_expenses(session: Session, params: ExpenseFilterParams, current_user_id: UUID):
+    # 1. Reuse existing account logic
+    db_account = get_account_by_id(session=session, account_id=params.account_id)
+
+    ensure_account_mutable(
+        account_id=params.account_id, account_status=db_account.status, operation=Operation.EXPENSE_READ
+    )
+
+    # 2. Membership Check (Defense in Depth)
+    is_a_member = (
+        session.scalar(
+            select(1).where(Membership.account_id == params.account_id, Membership.user_id == current_user_id).limit(1)
+        )
+        is not None
+    )
+
+    if not is_a_member:
+        raise UserNotMemberOfTheAccountError(user_id=current_user_id, account_id=params.account_id)
     # 1. Base Query
     query = select(Expense).where(Expense.account_id == params.account_id)
 

@@ -72,10 +72,11 @@ def delete_expense_by_id_endpoint(expense_id: UUID, current_user_id: CurrentUser
 @router.post("/search", response_model=PaginatedExpenseResponse)
 def get_filtered_expenses_endpoint(
     expense_filters: ExpenseFilterParams,
+    current_user_id: CurrentUser,
     db: Db,  # Assuming Db is your Session dependency
 ) -> PaginatedExpenseResponse:
     # Unpack the tuple
-    items, total, total_sum = get_filtered_expenses(session=db, params=expense_filters)
+    items, total, total_sum = get_filtered_expenses(session=db, params=expense_filters, current_user_id=current_user_id)
 
     # Return JSON response
     return PaginatedExpenseResponse(

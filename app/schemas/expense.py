@@ -132,14 +132,14 @@ class ExpenseUpdate(BaseModel):
 
 class ExpenseFilterParams(BaseModel):
     # Search & Filter
-    account_id: str
+    account_id: UUID
     start_date: date | None = None
     end_date: date | None = None
     category: ExpenseCategory | None = None
     min_amount: float | None = None
     max_amount: float | None = None
-    search_query: str | None = None
-    user_id: str | None = None
+    search_query: UUID | None = None
+    user_id: UUID | None = None
 
     # Pagination & Offset
     limit: int = 20
