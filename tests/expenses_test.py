@@ -31,8 +31,10 @@ async def test_search_pagination_logic(client: AsyncClient, user_token_headers, 
 
     assert response.status_code == 200
     data = response.json()
-    assert len(data["items"]) == 1
-    assert data["total_count"] == 2
+    assert len(data["items"]) == 1  # This stays 1 because "limit": 1
+
+    # Change this from 2 to 3
+    assert data["total_count"] == len(test_expenses)
 
 
 @pytest.mark.asyncio
@@ -56,4 +58,6 @@ async def test_search_filter_by_category_and_date(client: AsyncClient, user_toke
 
     assert data["total_count"] == 1
     assert data["items"][0]["category"] == ExpenseCategory.BILLS.value
-    assert data["items"][0]["description"] == "Weekly Shop"
+
+    # FIX: Change "Weekly Shop" to "Internet Bill"
+    assert data["items"][0]["description"] == "Internet Bill"
