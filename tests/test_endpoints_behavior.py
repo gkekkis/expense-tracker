@@ -1,7 +1,7 @@
 import os
 from datetime import date, datetime, timezone
 from decimal import Decimal
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -23,7 +23,7 @@ from app.domain.expenses.expense import ExpenseCategory  # adjust if different
 from app.main import app  # must expose FastAPI instance
 
 # ---------- Test DB setup ----------
-DATABASE_URL = os.getenv("TEST_DATABASE_URL") or os.getenv("DATABASE_URL")
+DATABASE_URL = os.getenv("PYTEST_DATABASE_URL")
 if not DATABASE_URL:
     raise RuntimeError("Set TEST_DATABASE_URL (preferred) or DATABASE_URL for tests.")
 
@@ -177,8 +177,9 @@ def assert_http(resp, expected_status: int, expected_error_code: str | None = No
 # ============================================================
 
 
-def test_accounts_patch_active_owner_can_rename(client, db):
-    owner = seed_user(db)
+def test_accounts_patch_active_owner_can_rename(client, db, test_user_id):
+    # Pass the fixed ID to your seed function
+    owner = seed_user(db, id=UUID(test_user_id))
     acc = seed_account(db, status=AccountStatus.ACTIVE)
     seed_membership(db, user_id=owner.id, account_id=acc.id, role=MembershipRole.OWNER)
 
@@ -268,8 +269,13 @@ def test_accounts_patch_no_fields_provided_returns_400(client, db):
     acc = seed_account(db, status=AccountStatus.ACTIVE)
     seed_membership(db, user_id=owner.id, account_id=acc.id, role=MembershipRole.OWNER)
 
-    # empty JSON body -> no fields provided
-    resp = client.patch(f"/api/v1/accounts/{acc.id}", params={"current_user_id": str(owner.id)}, json={})
+    # CHANGE THIS: Remove the "status" field so the body is truly empty
+    resp = client.patch(
+        f"/api/v1/accounts/{acc.id}",
+        params={"current_user_id": str(owner.id)},
+        json={},  # This is what triggers the "NO_FIELDS_PROVIDED" error
+    )
+
     assert_http(resp, 400, "ACCOUNT_UPDATE_NO_FIELDS_PROVIDED")
 
 

@@ -4,12 +4,17 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
+from pathlib import Path
 from typing import Any
 from uuid import UUID
 
+from dotenv import load_dotenv
 from pydantic import BaseModel, ValidationInfo, field_validator
 
+from ..domain.currencies.currency import Currency
 from ..domain.expenses.expense import ExpenseCategory
+
+dotenv_loaded = load_dotenv(Path(__file__).resolve().parent.parent / "../.env")
 
 
 class ExpenseCreate(BaseModel):
@@ -18,6 +23,7 @@ class ExpenseCreate(BaseModel):
     amount: Decimal
     category: ExpenseCategory
     expense_date: date
+    currency: Currency
 
     @field_validator("description", mode="before")
     @classmethod
@@ -69,6 +75,7 @@ class ExpenseRead(BaseModel):
     description: str
     amount: Decimal
     category: ExpenseCategory
+    currency: Currency
     expense_date: date
     created_by_user_id: UUID | None
     created_at: datetime
@@ -82,6 +89,7 @@ class ExpenseUpdate(BaseModel):
     amount: Decimal | None = None
     category: ExpenseCategory | None = None
     expense_date: date | None = None
+    currency: Currency | None = None
 
     @field_validator("description", mode="before")
     @classmethod
@@ -138,7 +146,7 @@ class ExpenseFilterParams(BaseModel):
     category: ExpenseCategory | None = None
     min_amount: float | None = None
     max_amount: float | None = None
-    search_query: UUID | None = None
+    search_query: str | None = None
     user_id: UUID | None = None
 
     # Pagination & Offset
@@ -152,3 +160,6 @@ class PaginatedExpenseResponse(BaseModel):
     total_count: int
     limit: int
     offset: int
+    total_amount_formatted: str
+    rates_updated_at: datetime | None = None
+    base_currency: str = "EUR"
