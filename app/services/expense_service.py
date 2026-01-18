@@ -14,6 +14,7 @@ from ..db.models.account import Account
 from ..db.models.expense import Expense
 from ..db.models.membership import Membership
 from ..db.models.user import User
+from ..domain.currencies.currency import Currency
 from ..domain.memberships.membership import MembershipRole
 from ..domain.operations import Operation
 from ..domain.policies.account_state import ensure_account_mutable
@@ -68,6 +69,7 @@ def create_expense(session: Session, expense_in: ExpenseCreate, created_by_user_
         amount=expense_in.amount,
         category=expense_in.category,
         expense_date=expense_in.expense_date,
+        currency=expense_in.currency,
     )
 
     session.add(db_expense)
@@ -95,6 +97,7 @@ def update_expense_by_id(
     amount: Decimal | None = None,
     category: ExpenseCategory | None = None,
     expense_date: date | None = None,
+    currency: Currency | None = None,
 ) -> Expense:
     db_expense = session.get(Expense, expense_id)
     # Check if account is ACTIVE
@@ -149,6 +152,8 @@ def update_expense_by_id(
         db_expense.category = category
     if expense_date is not None:
         db_expense.expense_date = expense_date
+    if currency is not None:
+        db_expense.currency = currency
 
     session.flush()
 
@@ -199,7 +204,7 @@ def get_filtered_expenses(session: Session, params: ExpenseFilterParams, current
         account_id=params.account_id, account_status=db_account.status, operation=Operation.EXPENSE_READ
     )
 
-    # 2. Membership Check (Defense in Depth)
+    # 2. Membership Check
     is_a_member = (
         session.scalar(
             select(1).where(Membership.account_id == params.account_id, Membership.user_id == current_user_id).limit(1)
@@ -209,38 +214,32 @@ def get_filtered_expenses(session: Session, params: ExpenseFilterParams, current
 
     if not is_a_member:
         raise UserNotMemberOfTheAccountError(user_id=current_user_id, account_id=params.account_id)
-    # 1. Base Query
+
+    # 3. Base Query
     query = select(Expense).where(Expense.account_id == params.account_id)
 
-    # 2. Robust Search Logic
-    if params.search_query:
-        search_input = params.search_query.strip()
+    # 4. Robust Search Logic (FTS)
+    search_query = getattr(params, "search_query", None)
+    if search_query and isinstance(search_query, str):
+        search_input = search_query.strip()
         if search_input:
-            # We use 'fat-arrow' formatting for prefix matching
-            # This handles "shop" matching "Shopping" or "Shop"
             search_str = f"{search_input}:*"
             query = query.where(
                 func.to_tsvector("english", Expense.description).op("@@")(func.to_tsquery("english", search_str))
             )
 
-    # 3. Apply Filters
+    # 5. Apply Filters
     if params.start_date:
         query = query.where(Expense.expense_date >= params.start_date)
     if params.category:
         query = query.where(Expense.category == params.category)
 
-    # --- AGGREGATION (The Warning Fix) ---
+    # 6. Aggregation (Get Total Count before Pagination)
     subq = query.subquery()
-
-    # Total Count
     total_count = session.execute(select(func.count()).select_from(subq)).scalar() or 0
 
-    # Total Sum - Selecting from subq.c (subquery columns) prevents Cartesian Product
-    total_sum = session.execute(select(func.sum(subq.c.amount)).select_from(subq)).scalar() or 0
-
-    # 4. Final Data Fetch
-    final_query = query.order_by(Expense.expense_date.desc())
-    final_query = final_query.offset(params.offset).limit(params.limit)
+    # 7. Final Results (Paginated)
+    final_query = query.order_by(Expense.expense_date.desc()).offset(params.offset).limit(params.limit)
     results = session.execute(final_query).scalars().all()
 
-    return results, total_count, total_sum
+    return results, total_count, 0
