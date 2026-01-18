@@ -1,4 +1,4 @@
-CURRENCY_SYMMBOLS = {
+CURRENCY_SYMBOLS = {
     "USD": {"symbol": "$", "locale": "en_US"},
     "EUR": {"symbol": "€", "locale": "de_DE"},
     "GBP": {"symbol": "£", "locale": "en_GB"},
