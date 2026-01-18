@@ -1,14 +1,41 @@
+import os
 from logging.config import fileConfig
+from pathlib import Path
 
+from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 from app.db import models  # noqa: F401
 from app.db.base import Base
 
-# this is the Alembic Config object, which provides
-# access to the values within the .ini file in use.
+# 1. Setup path and load .env
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
+
+
+# 2. Dynamic URL Selection Logic
+def get_url():
+    is_dev = os.getenv("DEV", "False").lower() == "true"
+
+    if is_dev:
+        # Priority for the test database during development
+        url = os.getenv("TEST_DATABASE_URL")
+    else:
+        # Use the standard URL for production/other environments
+        url = os.getenv("DATABASE_URL")
+
+    return url
+
+
+# 3. Configure Alembic to use the selected URL
+database_url = get_url()
 config = context.config
+
+if database_url:
+    config.set_main_option("sqlalchemy.url", database_url)
+else:
+    raise ValueError("No database URL found in environment variables!")
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

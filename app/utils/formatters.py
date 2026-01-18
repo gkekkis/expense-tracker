@@ -169,5 +169,5 @@ CURRENCY_SYMBOLS = {
 
 
 def format_currency(amount: float, currency_code: str) -> str:
-    config = CURRENCY_SYMMBOLS.get(currency_code, {"symbol": currency_code, "locale": "en_US"})
+    config = CURRENCY_SYMBOLS.get(currency_code, {"symbol": currency_code, "locale": "en_US"})
     return f"{config['symbol']}{amount:,.2f}"
