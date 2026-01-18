@@ -9,8 +9,9 @@ from sqlalchemy import Column, Date, DateTime, Enum, ForeignKey, Index, Numeric,
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from ...domain.currencies.currency import Currency
 from ...domain.expenses.expense import ExpenseCategory
-from ..base import Base
+from ..declarative_base import Base
 
 
 class Expense(Base):
@@ -24,8 +25,10 @@ class Expense(Base):
 
     description = Column(String, nullable=False)
     amount = Column(Numeric(10, 2), nullable=False)
-    category = Column(Enum(ExpenseCategory), nullable=False)
+
+    category = Column(Enum(ExpenseCategory, name="expensecategory"), nullable=False)
     expense_date = Column(Date, nullable=False)
+    currency = Column(Enum(Currency, name="currency"), nullable=False, default=Currency.EUR)
 
     # Audit Timestamps
     created_at: Mapped[datetime.datetime] = mapped_column(

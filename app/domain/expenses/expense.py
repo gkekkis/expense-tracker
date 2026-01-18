@@ -7,6 +7,8 @@ from decimal import Decimal
 from enum import Enum
 from uuid import UUID, uuid4
 
+from ..currencies.currency import Currency
+
 
 class ExpenseCategory(Enum):
     """Blueprint class containing expense categories."""
@@ -39,6 +41,7 @@ class Expense:
         category: ExpenseCategory,
         expense_date: date,
         expense_id: UUID | None = None,
+        currency: Currency = Currency.EUR,
     ) -> None:
         if not description or not str(description).strip():
             raise ValueError("description must not be empty or blank.")
@@ -49,10 +52,12 @@ class Expense:
         self.amount: Decimal = amount
         self.category: ExpenseCategory = category
         self.expense_date: date = expense_date
+        self.currency = currency
 
     def __repr__(self) -> str:
         return (
             f"<id: {self.id}, account_id: {self.account_id}, "
             f"description: {self.description}, amount: {self.amount}, "
-            f"category: {self.category}, expense_date: {self.expense_date}>"
+            f"category: {self.category}, expense_date: {self.expense_date}>, "
+            f"currency: {self.currency}"
         )
