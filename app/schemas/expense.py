@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, ValidationInfo, field_validator
 
 from ..domain.currencies.currency import Currency
-from ..domain.expenses.expense import ExpenseCategory
+from ..domain.expenses.expense import ExpenseStatus
 
 dotenv_loaded = load_dotenv(Path(__file__).resolve().parent.parent / "../.env")
 
@@ -21,9 +21,10 @@ class ExpenseCreate(BaseModel):
     account_id: UUID
     description: str
     amount: Decimal
-    category: ExpenseCategory
+    category_id: UUID
     expense_date: date
     currency: Currency
+    status: ExpenseStatus = ExpenseStatus.COMPLETED
 
     @field_validator("description", mode="before")
     @classmethod
@@ -74,7 +75,8 @@ class ExpenseRead(BaseModel):
     account_id: UUID
     description: str
     amount: Decimal
-    category: ExpenseCategory
+    category_id: UUID
+    status: ExpenseStatus
     currency: Currency
     expense_date: date
     created_by_user_id: UUID | None
@@ -87,7 +89,7 @@ class ExpenseRead(BaseModel):
 class ExpenseUpdate(BaseModel):
     description: str | None = None
     amount: Decimal | None = None
-    category: ExpenseCategory | None = None
+    category_id: UUID | None = None
     expense_date: date | None = None
     currency: Currency | None = None
 
@@ -141,9 +143,10 @@ class ExpenseUpdate(BaseModel):
 class ExpenseFilterParams(BaseModel):
     # Search & Filter
     account_id: UUID
+    status: ExpenseStatus | None = None
     start_date: date | None = None
     end_date: date | None = None
-    category: ExpenseCategory | None = None
+    category_id: UUID | None = None
     min_amount: float | None = None
     max_amount: float | None = None
     search_query: str | None = None

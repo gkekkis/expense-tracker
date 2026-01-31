@@ -30,6 +30,14 @@ class ExpenseCategory(Enum):
     MISC = "Miscellaneous"
 
 
+class ExpenseStatus(Enum):
+    """Blueprint class containing expense status."""
+
+    PENDING = "Pending"
+    COMPLETED = "Completed"
+    CANCELLED = "Cancelled"
+
+
 class Expense:
     """Expense domain class."""
 
@@ -38,7 +46,8 @@ class Expense:
         account_id: UUID,
         description: str,
         amount: Decimal,
-        category: ExpenseCategory,
+        category_id: UUID,
+        status: ExpenseStatus,
         expense_date: date,
         expense_id: UUID | None = None,
         currency: Currency = Currency.EUR,
@@ -50,7 +59,8 @@ class Expense:
         self.account_id: UUID = account_id
         self.description: str = str(description).strip()
         self.amount: Decimal = amount
-        self.category: ExpenseCategory = category
+        self.category_id: UUID = category_id
+        self.status: ExpenseStatus = status
         self.expense_date: date = expense_date
         self.currency = currency
 

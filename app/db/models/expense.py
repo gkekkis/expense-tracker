@@ -10,7 +10,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ...domain.currencies.currency import Currency
-from ...domain.expenses.expense import ExpenseCategory
+from ...domain.expenses.expense import ExpenseStatus
 from ..declarative_base import Base
 
 
@@ -26,7 +26,8 @@ class Expense(Base):
     description = Column(String, nullable=False)
     amount = Column(Numeric(10, 2), nullable=False)
 
-    category = Column(Enum(ExpenseCategory, name="expensecategory"), nullable=False)
+    category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id"), nullable=False)
+    status = Column(Enum(ExpenseStatus), nullable=False)
     expense_date = Column(Date, nullable=False)
     currency = Column(Enum(Currency, name="currency"), nullable=False, default=Currency.EUR)
 
@@ -46,7 +47,7 @@ class Expense(Base):
         # 1. Dashboard Index: Filters by account and sorts by date (newest first)
         Index("ix_expenses_account_date", "account_id", expense_date.desc()),
         # 2. Reporting Index: Filters by category within an account
-        Index("ix_expenses_account_category", "account_id", "category"),
+        Index("ix_expenses_account_category", "account_id", "category_id"),
         # 3. GIN Full-Text Search Index:
         # Converts 'description' to a searchable vector.
         # Using 'english' config ignores common words like 'the' or 'a'.
