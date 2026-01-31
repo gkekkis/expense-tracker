@@ -12,29 +12,38 @@ from uuid import UUID  # noqa: E402, TCH003
 from sqlalchemy import select  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: TCH002, E402
 
-from ..db.models.account import Account  # noqa: E402
-from ..db.models.expense import Expense  # noqa: E402
-from ..db.models.membership import Membership, MembershipRole  # noqa: E402
-from ..domain.accounts.account import AccountStatus  # noqa: E402
-from ..domain.operations import Operation  # noqa: E402
-from ..domain.policies.account_state import (  # noqa: E402
+from ...db.models.account import Account  # noqa: E402
+from ...db.models.category import Category
+from ...db.models.expense import Expense  # noqa: E402
+from ...db.models.membership import Membership, MembershipRole  # noqa: E402
+from ...domain.accounts.account import AccountStatus  # noqa: E402
+from ...domain.expenses.category_defaults import CATEGORY_EMOJI_MAP
+from ...domain.expenses.expense import ExpenseCategory
+from ...domain.operations import Operation  # noqa: E402
+from ...domain.policies.account_state import (  # noqa: E402
     ensure_account_mutable,
     ensure_inactive_account_reactivation_only,
 )
-from ..errors.errors import (  # noqa: E402
+from ...errors.errors import (  # noqa: E402
     AccountDoesNotExistError,
     AccountUpdateForbiddenError,
     AccountUpdateNoFieldsProvidedError,
     UserNotMemberOfTheAccountError,
 )
-from ..schemas.account import AccountCreate  # noqa: TCH001, E402
+from ...schemas.account import AccountCreate  # noqa: TCH001, E402
+from .onboarding import process_new_account_onboarding
 
 
 def create_account(session: Session, account_in: AccountCreate) -> Account:
-    db_account = Account(name=account_in.name, status=account_in.status)
+    db_account = Account(name=account_in.name, status=account_in.status, default_category_id=None)
 
     session.add(db_account)
     session.flush()
+
+    misc_id = seed_default_categories(session=session, account_id=db_account.id)
+    db_account.default_category_id = misc_id
+    db_account = process_new_account_onboarding(session=session, account=db_account, category_map=CATEGORY_EMOJI_MAP)
+    session.commit()
 
     return db_account
 
@@ -156,3 +165,16 @@ def update_account_by_id(
     session.flush()
 
     return db_account
+
+
+def seed_default_categories(session: Session, account_id: UUID) -> UUID:
+    for exp_category in ExpenseCategory:
+        exp_emoji = CATEGORY_EMOJI_MAP[exp_category]
+        db_category = Category(account_id=account_id, name=exp_category.value, emoji=exp_emoji)
+        session.add(db_category)
+
+        if exp_category == ExpenseCategory.MISC:
+            misc_category_obj = db_category
+    session.flush()
+
+    return misc_category_obj.id

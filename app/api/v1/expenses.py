@@ -10,9 +10,17 @@ from sqlalchemy.orm import Session
 from app.db.models.currency import Currency
 
 from ...db.models.currency import CurrencyRate
-from ...schemas.expense import ExpenseCreate, ExpenseFilterParams, ExpenseRead, ExpenseUpdate, PaginatedExpenseResponse
+from ...schemas.expense import (
+    ExpenseCreate,
+    ExpenseFilterParams,
+    ExpenseRead,
+    ExpenseStatus,
+    ExpenseUpdate,
+    PaginatedExpenseResponse,
+)
 from ...services.currency_service import CurrencyService
 from ...services.expense_service import (
+    confirm_pending_expense,
     create_expense,
     delete_expense_by_id,
     get_all_expenses,
@@ -59,7 +67,7 @@ def update_expense_by_id_endpoint(
         current_user_id=current_user_id,
         description=expense_update.description,
         amount=expense_update.amount,
-        category=expense_update.category,
+        category_id=expense_update.category_id,
         expense_date=expense_update.expense_date,
     )
 
@@ -110,3 +118,27 @@ async def get_filtered_expenses_endpoint(
         rates_updated_at=latest_rate_update,
         base_currency=calc_currency.value,
     )
+
+
+@router.patch("/expenses/{expense_id}/approve", response_model=ExpenseRead)
+def confirm_pending_expense_endpoint(expense_id: UUID, current_user_id: CurrentUser, db: Db) -> ExpenseRead:
+    # Service should return the updated object
+    updated_expense = confirm_pending_expense(session=db, expense_id=expense_id, current_user_id=current_user_id)
+    db.commit()
+    db.refresh(updated_expense)
+    return updated_expense
+
+
+@router.get("/accounts/{account_id}/expenses", response_model=list[ExpenseRead])
+def get_account_expenses_with_filters(
+    account_id: UUID,
+    current_user_id: CurrentUser,
+    db: Db,
+    status: ExpenseStatus | None = Query(None),  # Allows ?status=PENDING
+) -> list[ExpenseRead]:
+    # Build the params object manually or pass directly to a service
+    params = ExpenseFilterParams(account_id=account_id, status=status)
+
+    items, _, _ = get_filtered_expenses(session=db, params=params, current_user_id=current_user_id)
+
+    return items

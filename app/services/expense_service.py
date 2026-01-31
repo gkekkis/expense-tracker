@@ -11,15 +11,19 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session  # noqa: TCH002
 
 from ..db.models.account import Account
-from ..db.models.expense import Expense
+from ..db.models.category import Category
+from ..db.models.expense import Expense, ExpenseStatus
 from ..db.models.membership import Membership
+from ..db.models.recurring_template import RecurringTemplate
 from ..db.models.user import User
 from ..domain.currencies.currency import Currency
+from ..domain.expenses.recurring_logic import calculate_next_date
 from ..domain.memberships.membership import MembershipRole
 from ..domain.operations import Operation
 from ..domain.policies.account_state import ensure_account_mutable
 from ..errors.errors import (
     AccountDoesNotExistError,
+    CategoryNotFoundError,
     ExpenseDeleteForbiddenError,
     ExpenseDoesNotExistError,
     ExpenseUpdateForbiddenError,
@@ -28,11 +32,10 @@ from ..errors.errors import (
     UserNotMemberOfTheAccountError,
 )
 from ..schemas.expense import (
-    ExpenseCategory,
     ExpenseCreate,  # noqa: TCH001
     ExpenseFilterParams,
 )
-from .account_service import get_account_by_id
+from .accounts.account_service import get_account_by_id
 
 
 def create_expense(session: Session, expense_in: ExpenseCreate, created_by_user_id: UUID | None) -> Expense:
@@ -69,6 +72,7 @@ def create_expense(session: Session, expense_in: ExpenseCreate, created_by_user_
         amount=expense_in.amount,
         category=expense_in.category,
         expense_date=expense_in.expense_date,
+        status=expense_in.status,
         currency=expense_in.currency,
     )
 
@@ -95,68 +99,58 @@ def update_expense_by_id(
     current_user_id: UUID,
     description: str | None = None,
     amount: Decimal | None = None,
-    category: ExpenseCategory | None = None,
+    category_id: UUID | None = None,  # Change 1: Use UUID
     expense_date: date | None = None,
     currency: Currency | None = None,
 ) -> Expense:
     db_expense = session.get(Expense, expense_id)
-    # Check if account is ACTIVE
-    account_id = db_expense.account_id
-    statement = select(Account.status).where(Account.id == account_id)
-    account_status = session.scalar(statement)
-
-    # Check if account exists
-    if session.get(Account, account_id) is None:
-        raise AccountDoesNotExistError(account_id=account_id)
-
-    # If exists use helper function to check if it is active. If not raise error
-    ensure_account_mutable(account_id=account_id, account_status=account_status, operation=Operation.EXPENSE_UPDATE)
-
     if db_expense is None:
         raise ExpenseDoesNotExistError(expense_id=expense_id)
 
-    if all(value is None for value in [description, amount, category, expense_date]):
+    # Check Account Status & Existence
+    account_id = db_expense.account_id
+    account = session.get(Account, account_id)
+    if account is None:
+        raise AccountDoesNotExistError(account_id=account_id)
+
+    ensure_account_mutable(account_id=account_id, account_status=account.status, operation=Operation.EXPENSE_UPDATE)
+
+    # Permission Check: Is user a member? Is user Owner or Creator?
+    # (Keeping your existing logic here, but cleaned up slightly)
+    membership = session.execute(
+        select(Membership).where(Membership.user_id == current_user_id, Membership.account_id == account_id)
+    ).scalar_one_or_none()
+
+    if not membership:
+        raise UserNotMemberOfTheAccountError(user_id=current_user_id, account_id=account_id)
+
+    is_owner = membership.role == MembershipRole.OWNER
+    is_creator = db_expense.created_by_user_id == current_user_id
+
+    if not (is_owner or is_creator):
+        raise ExpenseUpdateForbiddenError(user_id=current_user_id, expense_id=expense_id, account_id=account_id)
+
+    # Check if we actually have something to update
+    if all(v is None for v in [description, amount, category_id, expense_date, currency]):
         raise ExpenseUpdateNoFieldsProvidedError(expense_id=expense_id)
 
-    # Check if user is a member of the account
-    statement = (
-        select(Expense.account_id)
-        .where(Membership.user_id == current_user_id)
-        .where(Membership.account_id == db_expense.account_id)
-        .limit(1)
-    )
+    if category_id is not None:
+        category = session.get(Category, category_id)
+        if not category or category.account_id != account_id:
+            raise CategoryNotFoundError(category_id=category_id)
+        db_expense.category_id = category_id
 
-    is_member = session.scalar(statement) is not None
-
-    if not is_member:
-        raise UserNotMemberOfTheAccountError(user_id=current_user_id, account_id=db_expense.account_id)
-
-    statement = (
-        select(1).where(
-            Membership.user_id == current_user_id,
-            Membership.account_id == db_expense.account_id,
-            Membership.role == MembershipRole.OWNER,
-        )
-    ).limit(1)
-    current_user_is_owner = session.scalar(statement) is not None
-    if all([not db_expense.created_by_user_id == current_user_id, not current_user_is_owner]):
-        raise ExpenseUpdateForbiddenError(
-            user_id=current_user_id, expense_id=expense_id, account_id=db_expense.account_id
-        )
-
+    # Update other fields
     if description is not None:
         db_expense.description = description
     if amount is not None:
         db_expense.amount = amount
-    if category is not None:
-        db_expense.category = category
     if expense_date is not None:
         db_expense.expense_date = expense_date
     if currency is not None:
         db_expense.currency = currency
 
     session.flush()
-
     return db_expense
 
 
@@ -218,7 +212,11 @@ def get_filtered_expenses(session: Session, params: ExpenseFilterParams, current
     # 3. Base Query
     query = select(Expense).where(Expense.account_id == params.account_id)
 
-    # 4. Robust Search Logic (FTS)
+    # 4. Filter by Status if provided in params
+    if params.status:
+        query = query.where(Expense.status == params.status)
+
+    # 5. Robust Search Logic (FTS)
     search_query = getattr(params, "search_query", None)
     if search_query and isinstance(search_query, str):
         search_input = search_query.strip()
@@ -228,11 +226,14 @@ def get_filtered_expenses(session: Session, params: ExpenseFilterParams, current
                 func.to_tsvector("english", Expense.description).op("@@")(func.to_tsquery("english", search_str))
             )
 
-    # 5. Apply Filters
+    # 6. Apply Filters
     if params.start_date:
         query = query.where(Expense.expense_date >= params.start_date)
-    if params.category:
-        query = query.where(Expense.category == params.category)
+    if params.category_id is not None:
+        category = session.get(Category, params.category_id)
+        if not category or category.account_id != params.account_id:
+            raise CategoryNotFoundError(category_id=params.category_id)
+        query = query.where(Expense.category_id == params.category_id)
 
     # 6. Aggregation (Get Total Count before Pagination)
     subq = query.subquery()
@@ -243,3 +244,73 @@ def get_filtered_expenses(session: Session, params: ExpenseFilterParams, current
     results = session.execute(final_query).scalars().all()
 
     return results, total_count, 0
+
+
+def process_recurring_templates(session: Session, account_id: UUID | None = None) -> None:
+    today = date.today()
+
+    query = select(RecurringTemplate).where(
+        RecurringTemplate.is_active == True, RecurringTemplate.next_occurrence_date <= today
+    )
+
+    if account_id:
+        query = query.where(RecurringTemplate.account_id == account_id)
+
+    due_templates = session.execute(query).scalars().all()
+
+    for template in due_templates:
+        # Catch up: Generate multiple expenses if the template is far behind
+        while template.next_occurrence_date <= today:
+            # 1. Create the Expense
+            new_expense = Expense(
+                account_id=template.account_id,
+                description=f"{template.name} (Recurring)",
+                amount=template.amount,
+                category_id=template.category_id,
+                status=ExpenseStatus.PENDING,
+                expense_date=template.next_occurrence_date,  # Use the occurrence date, not today!
+                # currency=template.currency, # Ensure this is in your model
+            )
+            session.add(new_expense)
+
+            # 2. Advance the date
+            template.next_occurrence_date = calculate_next_date(
+                template.anchor_date, template.next_occurrence_date, template.frequency
+            )
+
+    session.flush()
+
+
+def confirm_pending_expense(session: Session, expense_id: UUID, current_user_id: UUID) -> Expense:
+    db_expense = session.get(Expense, expense_id)
+    if not db_expense:
+        raise ExpenseDoesNotExistError(expense_id=expense_id)
+
+    membership_exists = session.scalar(
+        select(1).where(Membership.account_id == db_expense.account_id, Membership.user_id == current_user_id).limit(1)
+    )
+    if not membership_exists:
+        raise UserNotMemberOfTheAccountError(user_id=current_user_id, account_id=db_expense.account_id)
+
+    if db_expense.status == ExpenseStatus.PENDING:
+        db_expense.status = ExpenseStatus.COMPLETED
+
+    session.flush()
+    return db_expense
+
+
+def get_recurring_templates_by_account(
+    session: Session, account_id: UUID, current_user_id: UUID
+) -> Sequence[RecurringTemplate]:
+    db_account = session.get(Account, account_id)
+    if not db_account:
+        raise AccountDoesNotExistError(account_id=account_id)
+
+    membership_exists = session.scalar(
+        select(1).where(Membership.account_id == account_id, Membership.user_id == current_user_id).limit(1)
+    )
+    if not membership_exists:
+        raise UserNotMemberOfTheAccountError(user_id=current_user_id, account_id=account_id)
+
+    query = select(RecurringTemplate).where(RecurringTemplate.account_id == account_id)
+    return session.scalars(query).all()

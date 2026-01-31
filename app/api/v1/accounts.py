@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session
 from ...schemas.account import AccountCreate, AccountRead, AccountUpdate
 from ...schemas.expense import ExpenseRead
 from ...schemas.membership import MembershipRead
-from ...services.account_service import (
+from ...schemas.recurring_template import RecurringTemplateRead
+from ...services.accounts.account_service import (
     create_account,
     get_account_by_id,
     get_account_expenses_by_id,
@@ -17,6 +18,7 @@ from ...services.account_service import (
     get_all_accounts,
     update_account_by_id,
 )
+from ...services.expense_service import get_recurring_templates_by_account
 from ..dependencies import get_current_user_id, get_db
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])
@@ -82,3 +84,14 @@ def update_account_by_id_endpoint(
     db.refresh(updated_account)
 
     return updated_account
+
+
+@router.get("/accounts/{account_id}/recurring-templates", response_model=list[RecurringTemplateRead])
+def get_recurring_templates_by_account_endpoint(
+    account_id: UUID, current_user_id: CurrentUser, db: Db
+) -> list[RecurringTemplateRead]:
+    # Ensure the user has permission to view this account's templates
+    all_account_recurring_templates = get_recurring_templates_by_account(
+        session=db, account_id=account_id, current_user_id=current_user_id
+    )
+    return all_account_recurring_templates

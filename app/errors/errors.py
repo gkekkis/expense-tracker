@@ -128,3 +128,9 @@ class MembershipCreateForbiddenError(ExpenseTrackerProjectError):
 class MembershipFirstOwnerRequiredError(ExpenseTrackerProjectError):
     def __init__(self, account_id: UUID):
         self.account_id = account_id
+
+
+# CATEGORIES
+class CategoryNotFoundError(ExpenseTrackerProjectError):
+    def __init__(self, category_id: UUID):
+        self.category_id = category_id
