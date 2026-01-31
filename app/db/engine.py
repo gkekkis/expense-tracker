@@ -39,10 +39,17 @@ if missing_vars:
     )
 
 # 4. Build the database URL using the env values
-if not os.getenv("DEV"):
-    DATABASE_URL = f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
-else:
+is_dev = os.getenv("DEV", "False").lower() == "true"
+is_test = os.getenv("TESTING", "False").lower() == "true"
+
+assert is_dev != is_test, f"DEV and TESTING flags must not be equal.\nDEV: `{is_dev}`\tTESTING: `{is_test}`"
+
+if is_dev:
     DATABASE_URL = os.getenv("TEST_DATABASE_URL")
+elif is_test:
+    DATABASE_URL = os.getenv("PYTEST_DATABASE_URL")
+else:
+    DATABASE_URL = f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
 
 # 5. Create the SQLAlchemy engine
 engine: Engine = create_engine(DATABASE_URL)

@@ -17,10 +17,15 @@ load_dotenv(BASE_DIR / ".env")
 # 2. Dynamic URL Selection Logic
 def get_url():
     is_dev = os.getenv("DEV", "False").lower() == "true"
+    is_test = os.getenv("TESTING", "False").lower() == "true"
+
+    assert is_dev != is_test, f"DEV and TESTING flags must not be equal.\nDEV: `{is_dev}`\tTESTING: `{is_test}`"
 
     if is_dev:
         # Priority for the test database during development
         url = os.getenv("TEST_DATABASE_URL")
+    elif is_test:
+        url = os.getenv("PYTEST_DATABASE_URL")
     else:
         # Use the standard URL for production/other environments
         url = os.getenv("DATABASE_URL")

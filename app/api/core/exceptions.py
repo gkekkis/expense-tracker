@@ -8,6 +8,7 @@ from ...errors.errors import (
     AccountInactiveError,
     AccountUpdateForbiddenError,
     AccountUpdateNoFieldsProvidedError,
+    CategoryNotFoundError,
     ExpenseDeleteForbiddenError,
     ExpenseDoesNotExistError,
     ExpenseUpdateForbiddenError,
@@ -278,6 +279,18 @@ def register_exception_handlers(app: FastAPI):
                 "error_code": "MEMBERSHIP_FIRST_OWNER_REQUIRED",
                 "detail": f"Can not create membership for account with id "
                 f"`{exc.account_id}`. Need to have at least one OWNER.",
+                "path": request.url.path,
+            },
+        )
+
+    # CATEGORIES
+    @app.exception_handler(CategoryNotFoundError)
+    async def expense_category_does_not_exist_handler(request: Request, exc: CategoryNotFoundError) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={
+                "error_code": "EXPENSE_CATEGORY_NOT_FOUND",
+                "detail": f"Expense category with id `{exc.category_id}` does not exist.",
                 "path": request.url.path,
             },
         )
