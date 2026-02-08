@@ -19,7 +19,9 @@ def get_url():
     is_dev = os.getenv("DEV", "False").lower() == "true"
     is_test = os.getenv("TESTING", "False").lower() == "true"
 
-    assert is_dev != is_test, f"DEV and TESTING flags must not be equal.\nDEV: `{is_dev}`\tTESTING: `{is_test}`"
+    assert not (
+        is_dev and is_test
+    ), f"DEV and TESTING flags must not be both `True`.\nDEV: `{is_dev}`\tTESTING: `{is_test}`"
 
     if is_dev:
         # Priority for the test database during development

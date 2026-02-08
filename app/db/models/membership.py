@@ -5,7 +5,7 @@ from __future__ import annotations
 import datetime
 from uuid import uuid4
 
-from sqlalchemy import Column, DateTime, Enum, ForeignKey, UniqueConstraint, func
+from sqlalchemy import Column, DateTime, Enum, ForeignKey, Numeric, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -21,6 +21,7 @@ class Membership(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     account_id = Column(UUID(as_uuid=True), ForeignKey("accounts.id"), nullable=False)
     role = Column(Enum(MembershipRole), nullable=False)
+    default_contribution_share = Column(Numeric(3, 2), default=1.00, nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

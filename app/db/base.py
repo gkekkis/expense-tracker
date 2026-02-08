@@ -4,6 +4,7 @@ from .declarative_base import Base
 from .models.account import Account  # noqa: F401
 from .models.currency import CurrencyRate  # noqa: F401
 from .models.expense import Expense  # noqa: F401
+from .models.financial_profile import FinancialProfile  # noqa: F401
 from .models.membership import Membership  # noqa: F401
 from .models.user import User  # noqa: F401
 

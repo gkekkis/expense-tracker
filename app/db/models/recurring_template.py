@@ -26,6 +26,10 @@ class RecurringTemplate(Base):
     name = Column(String, nullable=False)
     amount = Column(Numeric(10, 2), nullable=False)
     currency = Column(Enum(Currency, name="currency"), nullable=False, default=Currency.EUR)
+
+    global_event_id = Column(UUID(as_uuid=True), nullable=True, index=True)
+    personal_responsibility_factor = Column(Numeric(3, 2), nullable=True)
+
     frequency = Column(Enum(FrequencyType, name="frequency"), nullable=False, default=FrequencyType.MONTHLY)
     anchor_date = Column(Date, nullable=False)
     next_occurrence_date = Column(Date, nullable=False)
