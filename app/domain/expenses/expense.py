@@ -51,9 +51,15 @@ class Expense:
         expense_date: date,
         expense_id: UUID | None = None,
         currency: Currency = Currency.EUR,
+        global_event_id: UUID | None = None,
+        personal_responsibility_factor: Decimal | None = None,
     ) -> None:
         if not description or not str(description).strip():
             raise ValueError("description must not be empty or blank.")
+
+        # Validation for responsibility factor (must be 0.0 to 1.0 if provided)
+        if personal_responsibility_factor is not None and not (0 <= personal_responsibility_factor <= 1):
+            raise ValueError("personal_responsibility_factor must be between 0 and 1.")
 
         self.id: UUID = expense_id or uuid4()
         self.account_id: UUID = account_id
@@ -63,6 +69,8 @@ class Expense:
         self.status: ExpenseStatus = status
         self.expense_date: date = expense_date
         self.currency = currency
+        self.global_event_id = global_event_id
+        self.personal_responsibility_factor = personal_responsibility_factor
 
     def __repr__(self) -> str:
         return (
