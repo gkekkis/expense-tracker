@@ -15,7 +15,6 @@ from ..db.models.category import Category
 from ..db.models.expense import Expense, ExpenseStatus
 from ..db.models.membership import Membership
 from ..db.models.recurring_template import RecurringTemplate
-from ..db.models.user import User
 from ..domain.currencies.currency import Currency
 from ..domain.expenses.recurring_logic import calculate_next_date
 from ..domain.memberships.membership import MembershipRole
@@ -28,7 +27,6 @@ from ..errors.errors import (
     ExpenseDoesNotExistError,
     ExpenseUpdateForbiddenError,
     ExpenseUpdateNoFieldsProvidedError,
-    UserDoesNotExistError,
     UserNotMemberOfTheAccountError,
 )
 from ..schemas.expense import (
@@ -36,49 +34,49 @@ from ..schemas.expense import (
     ExpenseFilterParams,
 )
 from .accounts.account_service import get_account_by_id
+from .responsibility_service import ResponsibilityService
 
 
 def create_expense(session: Session, expense_in: ExpenseCreate, created_by_user_id: UUID | None) -> Expense:
-    # Check if account exists
+    # 1. Validation
     statement = select(1).where(Account.id == expense_in.account_id).limit(1)
-    result = session.scalar(statement)
-
-    if result is None:
+    if session.scalar(statement) is None:
         raise AccountDoesNotExistError(account_id=expense_in.account_id)
 
-    if created_by_user_id is not None:
-        # Check if user exists
-        db_user = session.get(User, created_by_user_id)
-        if db_user is None:
-            raise UserDoesNotExistError(user_id=created_by_user_id)
+    if created_by_user_id:
+        membership = session.execute(
+            select(Membership).where(
+                Membership.user_id == created_by_user_id, Membership.account_id == expense_in.account_id
+            )
+        ).scalar_one_or_none()
 
-        # Check if user is a member of the account
-        statement = (
-            select(1)
-            .where(Membership.user_id == created_by_user_id)
-            .where(Membership.account_id == expense_in.account_id)
-            .limit(1)
-        )
-
-        result = session.scalar(statement)
-
-        if result is None:
+        if not membership:
             raise UserNotMemberOfTheAccountError(user_id=created_by_user_id, account_id=expense_in.account_id)
+
+    calculated_user_share = ResponsibilityService().calculate_user_share(
+        session=session,
+        user_id=created_by_user_id,
+        account_id=expense_in.account_id,
+        total_amount=expense_in.amount,
+        personal_responsibility_factor=expense_in.personal_responsibility_factor,
+    )
 
     db_expense = Expense(
         account_id=expense_in.account_id,
         created_by_user_id=created_by_user_id,
         description=expense_in.description,
         amount=expense_in.amount,
-        category=expense_in.category,
-        expense_date=expense_in.expense_date,
+        category_id=expense_in.category_id,
         status=expense_in.status,
+        expense_date=expense_in.expense_date,
         currency=expense_in.currency,
+        global_event_id=expense_in.global_event_id,
+        personal_responsibility_factor=expense_in.personal_responsibility_factor,
+        calculated_user_share=calculated_user_share,
     )
 
     session.add(db_expense)
     session.flush()
-
     return db_expense
 
 

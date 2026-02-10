@@ -56,19 +56,27 @@ class CurrencyService:
         if not rates:
             return
 
-        # Use a single timestamp for all entries in this batch
         now = datetime.datetime.now(datetime.timezone.utc)
 
-        for code, rate in rates.items():
-            db_rate = db.query(CurrencyRate).filter(CurrencyRate.code == code).first()
+        for code_str, rate in rates.items():
+            # 1. Try to map the string from the API to our Domain Enum
+            try:
+                code_enum = Currency(code_str)
+            except ValueError:
+                # Skip currencies we don't support in our Enum
+                continue
+
+            # 2. Query using the Enum object (SQLAlchemy handles the rest)
+            db_rate = db.query(CurrencyRate).filter(CurrencyRate.code == code_enum).first()
+
             if db_rate:
                 db_rate.rate = rate
                 db_rate.updated_at = now
             else:
-                new_rate = CurrencyRate(code=code, rate=rate, updated_at=now)
+                # 3. Create using the Enum object
+                new_rate = CurrencyRate(code=code_enum, rate=rate, updated_at=now)
                 db.add(new_rate)
 
-        # COMMIT ONCE after the loop for performance
         try:
             db.commit()
         except Exception as e:
