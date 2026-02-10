@@ -369,3 +369,76 @@ def seed_category(db, *, account_id, name, emoji):
     db.add(c)
     db.flush()
     return c
+
+
+# --- SHARED HOUSEHOLD FIXTURES ---
+@pytest.fixture
+def secondary_user_id():
+    return "8e4b123a-bc45-412d-9c3e-56789abcdef0"
+
+
+@pytest.fixture
+def secondary_user_token_headers(test_user_id):
+    return {"Authorization": "Bearer fake-token", "X-User-Id": secondary_user_id}
+
+
+@pytest.fixture
+def secondary_user(db_session, secondary_user_id):
+    """Creates a partner (e.g., Alex) for shared account testing."""
+    uid = UUID(secondary_user_id)
+    user = User(id=uid, name="Secondary User", email="alex@test.com", status=UserStatus.ACTIVE)
+    db_session.add(user)
+    db_session.flush()
+    return user
+
+
+@pytest.fixture
+def joint_account(db_session, test_user, secondary_user):
+    """
+    Creates a 'Household' account where both users are members.
+    Test User: 70% share
+    Secondary User: 30% share
+    """
+    account = Account(id=uuid4(), name="Joint Household", status=AccountStatus.ACTIVE)
+    db_session.add(account)
+    db_session.flush()
+
+    # George (test_user) pays 70%
+    m1 = Membership(
+        id=uuid4(),
+        user_id=test_user.id,
+        account_id=account.id,
+        role=MembershipRole.OWNER,
+        default_contribution_share=Decimal("0.70"),
+    )
+    # Alex (secondary_user) pays 30%
+    m2 = Membership(
+        id=uuid4(),
+        user_id=secondary_user.id,
+        account_id=account.id,
+        role=MembershipRole.MEMBER,
+        default_contribution_share=Decimal("0.30"),
+    )
+
+    db_session.add_all([m1, m2])
+    db_session.flush()
+    return account
+
+
+@pytest.fixture
+def personal_account(db_session, test_user):
+    """A private account only for the test user (100% share)."""
+    account = Account(id=uuid4(), name="Personal Account", status=AccountStatus.ACTIVE)
+    db_session.add(account)
+    db_session.flush()
+
+    m = Membership(
+        id=uuid4(),
+        user_id=test_user.id,
+        account_id=account.id,
+        role=MembershipRole.OWNER,
+        default_contribution_share=Decimal("1.00"),
+    )
+    db_session.add(m)
+    db_session.flush()
+    return account
