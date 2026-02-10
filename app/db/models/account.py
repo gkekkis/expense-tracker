@@ -35,4 +35,7 @@ class Account(Base):
     expenses = relationship("Expense", back_populates="account")
     memberships = relationship("Membership", back_populates="account")
     users = relationship("User", secondary="memberships", back_populates="accounts", viewonly=True)
+    financial_profile = relationship(
+        "FinancialProfile", back_populates="account", uselist=False, cascade="all, delete-orphan"
+    )
     default_category = relationship("Category", foreign_keys=[default_category_id])
