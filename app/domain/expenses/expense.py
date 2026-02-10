@@ -53,6 +53,7 @@ class Expense:
         currency: Currency = Currency.EUR,
         global_event_id: UUID | None = None,
         personal_responsibility_factor: Decimal | None = None,
+        calculated_user_share: Decimal | None = None,
     ) -> None:
         if not description or not str(description).strip():
             raise ValueError("description must not be empty or blank.")
@@ -71,6 +72,7 @@ class Expense:
         self.currency = currency
         self.global_event_id = global_event_id
         self.personal_responsibility_factor = personal_responsibility_factor
+        self.calculated_user_share = calculated_user_share
 
     def __repr__(self) -> str:
         return (

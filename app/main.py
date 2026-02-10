@@ -11,6 +11,7 @@ from .api.v1.accounts import router as accounts_router
 from .api.v1.expenses import router as expenses_router
 from .api.v1.health import router as healthcheck_router
 from .api.v1.memberships import router as memberships_router
+from .api.v1.summaries import router as summaries_router
 from .api.v1.users import router as users_router
 from .core.scheduler import start_scheduler, stop_scheduler
 from .db.base import Base  # noqa: F401
@@ -49,6 +50,7 @@ app.include_router(users_router, prefix="/api/v1")
 app.include_router(accounts_router, prefix="/api/v1", dependencies=[Depends(get_current_user_id)])
 app.include_router(expenses_router, prefix="/api/v1", dependencies=[Depends(get_current_user_id)])
 app.include_router(memberships_router, prefix="/api/v1", dependencies=[Depends(get_current_user_id)])
+app.include_router(summaries_router, prefix="/api/v1", dependencies=[Depends(get_current_user_id)])
 app.include_router(healthcheck_router, prefix="/api/v1")
 
 # Connect the handlers
