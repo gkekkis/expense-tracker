@@ -13,6 +13,7 @@ from ...errors.errors import (
     ExpenseDoesNotExistError,
     ExpenseUpdateForbiddenError,
     ExpenseUpdateNoFieldsProvidedError,
+    InvalidUserShareError,
     MembershipAlreadyExistError,
     MembershipCreateForbiddenError,
     MembershipDeleteForbiddenError,
@@ -22,6 +23,7 @@ from ...errors.errors import (
     MembershipLastOwnerDemoteForbiddenError,
     MembershipUpdateForbiddenError,
     MembershipUpdateNoFieldsProvidedError,
+    ProfileUpdateForbiddenError,
     UserDoesNotExistError,
     UserHasNoAccountsError,
     UserNotMemberOfTheAccountError,
@@ -291,6 +293,30 @@ def register_exception_handlers(app: FastAPI):
             content={
                 "error_code": "EXPENSE_CATEGORY_NOT_FOUND",
                 "detail": f"Expense category with id `{exc.category_id}` does not exist.",
+                "path": request.url.path,
+            },
+        )
+
+    # FINANCIAL PROFILES
+    @app.exception_handler(ProfileUpdateForbiddenError)
+    async def account_update_forbidden_handler(request: Request, exc: ProfileUpdateForbiddenError) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={
+                "error_code": "FINANCIAL_PROFILE_UPDATE_FORBIDDEN",
+                "detail": f"User with id `{exc.user_id}` and account id `{exc.account_id}` is not authorized to "
+                f"update financial profile with id `{exc.account_id}`.",
+                "path": request.url.path,
+            },
+        )
+
+    @app.exception_handler(InvalidUserShareError)
+    async def calculated_user_share_handler(request: Request, exc: InvalidUserShareError) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "error_code": "INVALID_USER_SHARE",
+                "detail": f"User share must be between 0 and 1. Got `{exc.personal_responsibility_factor}`",
                 "path": request.url.path,
             },
         )

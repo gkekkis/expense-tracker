@@ -24,12 +24,16 @@ class Expense(Base):
     created_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
     description = Column(String, nullable=False)
-    amount = Column(Numeric(10, 2), nullable=False)
+    amount = Column(Numeric(12, 2), nullable=False)
 
     category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id"), nullable=False)
     status = Column(Enum(ExpenseStatus), nullable=False)
     expense_date = Column(Date, nullable=False)
     currency = Column(Enum(Currency, name="currency"), nullable=False, default=Currency.EUR)
+
+    global_event_id = Column(UUID(as_uuid=True), nullable=True, index=True)
+    personal_responsibility_factor = Column(Numeric(3, 2), nullable=True)
+    calculated_user_share = Column(Numeric(12, 2), nullable=True)
 
     # Audit Timestamps
     created_at: Mapped[datetime.datetime] = mapped_column(

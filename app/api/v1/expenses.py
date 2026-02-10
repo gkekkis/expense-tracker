@@ -38,7 +38,7 @@ Db = Annotated[Session, Depends(get_db)]
 
 
 @router.post("/", response_model=ExpenseRead)
-def create_expense_endpoint(expense_in: ExpenseCreate, db: Db, created_by_user_id: UUID | None = None) -> ExpenseRead:
+def create_expense_endpoint(expense_in: ExpenseCreate, db: Db, created_by_user_id: CurrentUser) -> ExpenseRead:
     db_expense = create_expense(session=db, expense_in=expense_in, created_by_user_id=created_by_user_id)
     db.commit()
     db.refresh(db_expense)

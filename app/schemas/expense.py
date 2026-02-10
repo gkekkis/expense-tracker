@@ -9,7 +9,7 @@ from typing import Any
 from uuid import UUID
 
 from dotenv import load_dotenv
-from pydantic import BaseModel, ValidationInfo, field_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 from ..domain.currencies.currency import Currency
 from ..domain.expenses.expense import ExpenseStatus
@@ -25,6 +25,9 @@ class ExpenseCreate(BaseModel):
     expense_date: date
     currency: Currency
     status: ExpenseStatus = ExpenseStatus.COMPLETED
+    global_event_id: UUID | None = None
+    personal_responsibility_factor: Decimal | None = Field(None, ge=0, le=1)
+    calculated_user_share: Decimal | None = (None,)
 
     @field_validator("description", mode="before")
     @classmethod
@@ -78,6 +81,8 @@ class ExpenseRead(BaseModel):
     category_id: UUID
     status: ExpenseStatus
     currency: Currency
+    personal_responsibility_factor: Decimal | None = Field(None, ge=0, le=1)
+    calculated_user_share: Decimal | None = (None,)
     expense_date: date
     created_by_user_id: UUID | None
     created_at: datetime
@@ -92,6 +97,9 @@ class ExpenseUpdate(BaseModel):
     category_id: UUID | None = None
     expense_date: date | None = None
     currency: Currency | None = None
+    global_event_id: UUID | None = None
+    personal_responsibility_factor: Decimal | None = Field(None, ge=0, le=1)
+    calculated_user_share: Decimal | None = (None,)
 
     @field_validator("description", mode="before")
     @classmethod

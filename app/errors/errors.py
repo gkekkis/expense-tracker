@@ -1,5 +1,6 @@
 """Module containing custom errors."""
 
+from decimal import Decimal
 from uuid import UUID
 
 from ..domain.operations import Operation
@@ -134,3 +135,16 @@ class MembershipFirstOwnerRequiredError(ExpenseTrackerProjectError):
 class CategoryNotFoundError(ExpenseTrackerProjectError):
     def __init__(self, category_id: UUID):
         self.category_id = category_id
+
+
+# FINANCIAL PROFILES
+class ProfileUpdateForbiddenError(ExpenseTrackerProjectError):
+    def __init__(self, financial_profile_id: UUID, account_id: UUID, user_id: UUID):
+        self.financial_profile_id = financial_profile_id
+        self.account_id = account_id
+        self.user_id = user_id
+
+
+class InvalidUserShareError(ExpenseTrackerProjectError):
+    def __init__(self, personal_responsibility_factor: Decimal):
+        self.personal_responsibility_factor = personal_responsibility_factor
