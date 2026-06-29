@@ -148,3 +148,22 @@ class ProfileUpdateForbiddenError(ExpenseTrackerProjectError):
 class InvalidUserShareError(ExpenseTrackerProjectError):
     def __init__(self, personal_responsibility_factor: Decimal):
         self.personal_responsibility_factor = personal_responsibility_factor
+
+
+# RECURRING TEMPLATES
+class RecurringTemplateDoesNotExistError(ExpenseTrackerProjectError):
+    def __init__(self, recurring_template_id: UUID):
+        self.recurring_template_id = recurring_template_id
+
+
+class RecurringTemplateUpdateForbiddenError(ExpenseTrackerProjectError):
+    def __init__(self, user_id: UUID, recurring_template_id: UUID, account_id: UUID):
+        self.user_id = user_id
+        self.recurring_template_id = recurring_template_id
+        self.account_id = account_id
+
+
+class RecurringTemplateCreateForbiddenError(ExpenseTrackerProjectError):
+    def __init__(self, user_id: UUID, account_id: UUID):
+        self.user_id = user_id
+        self.account_id = account_id

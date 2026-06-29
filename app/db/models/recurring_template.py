@@ -21,6 +21,8 @@ class RecurringTemplate(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4, nullable=False, unique=True)
     account_id = Column(UUID(as_uuid=True), ForeignKey("accounts.id"), nullable=False)
+    # Used for permissioning: MEMBERS can manage templates they created; OWNER can manage all.
+    created_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id"), nullable=False)
     description = Column(String, nullable=False)
     name = Column(String, nullable=False)

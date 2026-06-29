@@ -3,47 +3,47 @@
 from __future__ import annotations
 
 import logging
+from typing import Sequence
+from uuid import UUID
 
-logger = logging.getLogger(__name__)
+from sqlalchemy import select
+from sqlalchemy.orm import Session, selectinload
 
-from typing import Sequence  # noqa: E402
-from uuid import UUID  # noqa: E402, TCH003
-
-from sqlalchemy import select  # noqa: E402
-from sqlalchemy.orm import Session  # noqa: TCH002, E402
-
-from ...db.models.account import Account  # noqa: E402
+from ...db.models.account import Account
 from ...db.models.category import Category
-from ...db.models.expense import Expense  # noqa: E402
-from ...db.models.membership import Membership, MembershipRole  # noqa: E402
-from ...domain.accounts.account import AccountStatus  # noqa: E402
+from ...db.models.expense import Expense
+from ...db.models.membership import Membership, MembershipRole
+from ...domain.accounts.account import AccountStatus
 from ...domain.expenses.category_defaults import CATEGORY_EMOJI_MAP
 from ...domain.expenses.expense import ExpenseCategory
-from ...domain.operations import Operation  # noqa: E402
-from ...domain.policies.account_state import (  # noqa: E402
-    ensure_account_mutable,
-    ensure_inactive_account_reactivation_only,
-)
-from ...errors.errors import (  # noqa: E402
+from ...domain.operations import Operation
+from ...domain.policies.account_state import ensure_account_mutable, ensure_inactive_account_reactivation_only
+from ...errors.errors import (
     AccountDoesNotExistError,
     AccountUpdateForbiddenError,
     AccountUpdateNoFieldsProvidedError,
     UserNotMemberOfTheAccountError,
 )
-from ...schemas.account import AccountCreate  # noqa: TCH001, E402
+from ...schemas.account import AccountCreate
 from .onboarding import process_new_account_onboarding
 
+logger = logging.getLogger(__name__)
 
-def create_account(session: Session, account_in: AccountCreate) -> Account:
+
+def create_account(session: Session, account_in: AccountCreate, current_user_id: UUID) -> Account:
     db_account = Account(name=account_in.name, status=account_in.status, default_category_id=None)
 
     session.add(db_account)
     session.flush()
 
-    misc_id = seed_default_categories(session=session, account_id=db_account.id)
-    db_account.default_category_id = misc_id
-    db_account = process_new_account_onboarding(session=session, account=db_account, category_map=CATEGORY_EMOJI_MAP)
-    session.commit()
+    category_ids = seed_default_categories(session=session, account_id=db_account.id)
+    db_account.default_category_id = category_ids[ExpenseCategory.MISC]
+
+    owner_membership = Membership(user_id=current_user_id, account_id=db_account.id, role=MembershipRole.OWNER)
+    session.add(owner_membership)
+
+    db_account = process_new_account_onboarding(session=session, account=db_account, category_ids=category_ids)
+    session.flush()
 
     return db_account
 
@@ -102,7 +102,10 @@ def get_account_expenses_by_id(session: Session, account_id: UUID, current_user_
         raise UserNotMemberOfTheAccountError(user_id=current_user_id, account_id=account_id)
 
     account_expenses = session.scalars(
-        select(Expense).where(Expense.account_id == account_id).order_by(Expense.expense_date.desc())
+        select(Expense)
+        .options(selectinload(Expense.category))
+        .where(Expense.account_id == account_id)
+        .order_by(Expense.expense_date.desc())
     ).all()
 
     return account_expenses
@@ -167,14 +170,13 @@ def update_account_by_id(
     return db_account
 
 
-def seed_default_categories(session: Session, account_id: UUID) -> UUID:
+def seed_default_categories(session: Session, account_id: UUID) -> dict[ExpenseCategory, UUID]:
+    category_ids: dict[ExpenseCategory, UUID] = {}
     for exp_category in ExpenseCategory:
         exp_emoji = CATEGORY_EMOJI_MAP[exp_category]
         db_category = Category(account_id=account_id, name=exp_category.value, emoji=exp_emoji)
         session.add(db_category)
+        session.flush()
+        category_ids[exp_category] = db_category.id
 
-        if exp_category == ExpenseCategory.MISC:
-            misc_category_obj = db_category
-    session.flush()
-
-    return misc_category_obj.id
+    return category_ids

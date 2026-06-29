@@ -46,6 +46,8 @@ class Expense(Base):
     # Relationships
     account = relationship("Account", back_populates="expenses")
     created_by_user = relationship("User")
+    # Category enrichment (used by API read models)
+    category = relationship("Category")
 
     __table_args__ = (
         # 1. Dashboard Index: Filters by account and sorts by date (newest first)
