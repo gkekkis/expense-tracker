@@ -8,7 +8,7 @@ from typing import Sequence
 from uuid import UUID
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session  # noqa: TCH002
+from sqlalchemy.orm import Session, selectinload  # noqa: TCH002
 
 from ..db.models.account import Account
 from ..db.models.category import Category
@@ -16,7 +16,6 @@ from ..db.models.expense import Expense, ExpenseStatus
 from ..db.models.membership import Membership
 from ..db.models.recurring_template import RecurringTemplate
 from ..domain.currencies.currency import Currency
-from ..domain.expenses.recurring_logic import calculate_next_date
 from ..domain.memberships.membership import MembershipRole
 from ..domain.operations import Operation
 from ..domain.policies.account_state import ensure_account_mutable
@@ -81,11 +80,14 @@ def create_expense(session: Session, expense_in: ExpenseCreate, created_by_user_
 
 
 def get_all_expenses(session: Session) -> Sequence[Expense]:
-    return session.scalars(select(Expense)).all()
+    return session.scalars(select(Expense).options(selectinload(Expense.category))).all()
 
 
 def get_expense_by_id(session: Session, expense_id: UUID) -> Expense:
-    db_expense = session.get(Expense, expense_id)
+    # Ensure category is available for read models
+    db_expense = session.execute(
+        select(Expense).options(selectinload(Expense.category)).where(Expense.id == expense_id)
+    ).scalar_one_or_none()
     if db_expense is None:
         raise ExpenseDoesNotExistError(expense_id=expense_id)
     return db_expense
@@ -208,11 +210,11 @@ def get_filtered_expenses(session: Session, params: ExpenseFilterParams, current
         raise UserNotMemberOfTheAccountError(user_id=current_user_id, account_id=params.account_id)
 
     # 3. Base Query
-    query = select(Expense).where(Expense.account_id == params.account_id)
+    query = select(Expense).options(selectinload(Expense.category)).where(Expense.account_id == params.account_id)
 
     # 4. Filter by Status if provided in params
     if params.status:
-        query = query.where(Expense.status == params.status)
+        query = query.where(Expense.status.in_(params.status))
 
     # 5. Robust Search Logic (FTS)
     search_query = getattr(params, "search_query", None)
@@ -227,53 +229,77 @@ def get_filtered_expenses(session: Session, params: ExpenseFilterParams, current
     # 6. Apply Filters
     if params.start_date:
         query = query.where(Expense.expense_date >= params.start_date)
+    if params.end_date:
+        query = query.where(Expense.expense_date <= params.end_date)
     if params.category_id is not None:
         category = session.get(Category, params.category_id)
         if not category or category.account_id != params.account_id:
             raise CategoryNotFoundError(category_id=params.category_id)
         query = query.where(Expense.category_id == params.category_id)
+    if params.min_amount is not None:
+        query = query.where(Expense.amount >= params.min_amount)
+    if params.max_amount is not None:
+        query = query.where(Expense.amount <= params.max_amount)
 
     # 6. Aggregation (Get Total Count before Pagination)
     subq = query.subquery()
     total_count = session.execute(select(func.count()).select_from(subq)).scalar() or 0
+    all_matching = session.execute(query.order_by(Expense.expense_date.desc())).scalars().all()
 
     # 7. Final Results (Paginated)
     final_query = query.order_by(Expense.expense_date.desc()).offset(params.offset).limit(params.limit)
     results = session.execute(final_query).scalars().all()
 
-    return results, total_count, 0
+    return results, total_count, all_matching
 
 
 def process_recurring_templates(session: Session, account_id: UUID | None = None) -> None:
+    """Processes all active templates that are due as of today."""
+    from datetime import date
+
+    from ..db.models.expense import Expense, ExpenseStatus
+    from ..db.models.recurring_template import RecurringTemplate
+    from ..domain.expenses.recurring_logic import calculate_next_date
+
     today = date.today()
 
-    query = select(RecurringTemplate).where(
-        RecurringTemplate.is_active == True, RecurringTemplate.next_occurrence_date <= today
+    # 1. Fetch active templates where next_occurrence_date is today or in the past.
+    stmt = select(RecurringTemplate).where(
+        RecurringTemplate.is_active.is_(True), RecurringTemplate.next_occurrence_date <= today
     )
+    if account_id is not None:
+        stmt = stmt.where(RecurringTemplate.account_id == account_id)
+    templates = session.scalars(stmt).all()
 
-    if account_id:
-        query = query.where(RecurringTemplate.account_id == account_id)
+    for tmpl in templates:
+        while tmpl.next_occurrence_date <= today:
+            calculated_user_share = ResponsibilityService().calculate_user_share(
+                session=session,
+                user_id=tmpl.created_by_user_id,
+                account_id=tmpl.account_id,
+                total_amount=tmpl.amount,
+                personal_responsibility_factor=tmpl.personal_responsibility_factor,
+            )
 
-    due_templates = session.execute(query).scalars().all()
-
-    for template in due_templates:
-        # Catch up: Generate multiple expenses if the template is far behind
-        while template.next_occurrence_date <= today:
-            # 1. Create the Expense
+            # 2. Create the PENDING expense (The "Forecast")
             new_expense = Expense(
-                account_id=template.account_id,
-                description=f"{template.name} (Recurring)",
-                amount=template.amount,
-                category_id=template.category_id,
+                account_id=tmpl.account_id,
+                created_by_user_id=tmpl.created_by_user_id,
+                category_id=tmpl.category_id,
+                description=f"{tmpl.name}",  # Keeping it clean
+                amount=tmpl.amount,
+                currency=tmpl.currency,
+                expense_date=tmpl.next_occurrence_date,
                 status=ExpenseStatus.PENDING,
-                expense_date=template.next_occurrence_date,  # Use the occurrence date, not today!
-                # currency=template.currency, # Ensure this is in your model
+                global_event_id=tmpl.global_event_id,
+                personal_responsibility_factor=tmpl.personal_responsibility_factor,
+                calculated_user_share=calculated_user_share,
             )
             session.add(new_expense)
 
-            # 2. Advance the date
-            template.next_occurrence_date = calculate_next_date(
-                template.anchor_date, template.next_occurrence_date, template.frequency
+            # 3. Update the template for the next cycle
+            tmpl.next_occurrence_date = calculate_next_date(
+                anchor_date=tmpl.anchor_date, current_date=tmpl.next_occurrence_date, frequency=tmpl.frequency
             )
 
     session.flush()

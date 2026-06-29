@@ -9,10 +9,11 @@ from typing import Any
 from uuid import UUID
 
 from dotenv import load_dotenv
-from pydantic import BaseModel, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, Field, ValidationInfo, computed_field, field_validator
 
 from ..domain.currencies.currency import Currency
 from ..domain.expenses.expense import ExpenseStatus
+from .category import CategoryRead
 
 dotenv_loaded = load_dotenv(Path(__file__).resolve().parent.parent / "../.env")
 
@@ -27,7 +28,7 @@ class ExpenseCreate(BaseModel):
     status: ExpenseStatus = ExpenseStatus.COMPLETED
     global_event_id: UUID | None = None
     personal_responsibility_factor: Decimal | None = Field(None, ge=0, le=1)
-    calculated_user_share: Decimal | None = (None,)
+    calculated_user_share: Decimal | None = None
 
     @field_validator("description", mode="before")
     @classmethod
@@ -79,14 +80,27 @@ class ExpenseRead(BaseModel):
     description: str
     amount: Decimal
     category_id: UUID
+    # Enriched category information to avoid client-side id->name mapping.
+    # Kept optional for backward compatibility.
+    category: CategoryRead | None = None
     status: ExpenseStatus
     currency: Currency
     personal_responsibility_factor: Decimal | None = Field(None, ge=0, le=1)
-    calculated_user_share: Decimal | None = (None,)
+    calculated_user_share: Decimal | None = None
     expense_date: date
     created_by_user_id: UUID | None
     created_at: datetime
     updated_at: datetime
+
+    @computed_field
+    @property
+    def category_name(self) -> str | None:
+        return self.category.name if self.category else None
+
+    @computed_field
+    @property
+    def category_emoji(self) -> str | None:
+        return self.category.emoji if self.category else None
 
     model_config = {"from_attributes": True}
 
@@ -99,7 +113,7 @@ class ExpenseUpdate(BaseModel):
     currency: Currency | None = None
     global_event_id: UUID | None = None
     personal_responsibility_factor: Decimal | None = Field(None, ge=0, le=1)
-    calculated_user_share: Decimal | None = (None,)
+    calculated_user_share: Decimal | None = None
 
     @field_validator("description", mode="before")
     @classmethod
@@ -151,7 +165,7 @@ class ExpenseUpdate(BaseModel):
 class ExpenseFilterParams(BaseModel):
     # Search & Filter
     account_id: UUID
-    status: ExpenseStatus | None = None
+    status: list[ExpenseStatus] | None = None
     start_date: date | None = None
     end_date: date | None = None
     category_id: UUID | None = None

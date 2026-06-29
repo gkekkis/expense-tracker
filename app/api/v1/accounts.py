@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from ...schemas.account import AccountCreate, AccountRead, AccountUpdate
+from ...schemas.category import CategoryRead
 from ...schemas.expense import ExpenseRead
 from ...schemas.membership import MembershipRead
 from ...schemas.recurring_template import RecurringTemplateRead
@@ -18,6 +19,7 @@ from ...services.accounts.account_service import (
     get_all_accounts,
     update_account_by_id,
 )
+from ...services.category_service import get_categories_by_account
 from ...services.expense_service import get_recurring_templates_by_account
 from ..dependencies import get_current_user_id, get_db
 
@@ -29,8 +31,8 @@ Db = Annotated[Session, Depends(get_db)]
 
 
 @router.post("/", response_model=AccountRead)
-def create_account_endpoint(account_in: AccountCreate, db: Db) -> AccountRead:
-    db_account = create_account(session=db, account_in=account_in)
+def create_account_endpoint(account_in: AccountCreate, current_user_id: CurrentUser, db: Db) -> AccountRead:
+    db_account = create_account(session=db, account_in=account_in, current_user_id=current_user_id)
     db.commit()
     db.refresh(db_account)
     return db_account
@@ -68,6 +70,11 @@ def get_account_expenses_by_id_endpoint(account_id: UUID, current_user_id: Curre
     return all_account_expenses
 
 
+@router.get("/{account_id}/categories", response_model=list[CategoryRead])
+def get_account_categories_endpoint(account_id: UUID, current_user_id: CurrentUser, db: Db) -> list[CategoryRead]:
+    return get_categories_by_account(session=db, account_id=account_id, current_user_id=current_user_id)
+
+
 @router.patch("/{account_id}", response_model=AccountRead)
 def update_account_by_id_endpoint(
     account_id: UUID, account_update: AccountUpdate, current_user_id: CurrentUser, db: Db
@@ -86,12 +93,17 @@ def update_account_by_id_endpoint(
     return updated_account
 
 
-@router.get("/accounts/{account_id}/recurring-templates", response_model=list[RecurringTemplateRead])
+@router.get("/{account_id}/recurring-templates", response_model=list[RecurringTemplateRead])
 def get_recurring_templates_by_account_endpoint(
     account_id: UUID, current_user_id: CurrentUser, db: Db
 ) -> list[RecurringTemplateRead]:
-    # Ensure the user has permission to view this account's templates
-    all_account_recurring_templates = get_recurring_templates_by_account(
-        session=db, account_id=account_id, current_user_id=current_user_id
-    )
-    return all_account_recurring_templates
+    """List recurring templates for an account (preferred path)."""
+    return list(get_recurring_templates_by_account(session=db, account_id=account_id, current_user_id=current_user_id))
+
+
+# Backwards-compatible alias (deprecated): keep to avoid breaking existing clients.
+@router.get("/accounts/{account_id}/recurring-templates", response_model=list[RecurringTemplateRead])
+def get_recurring_templates_by_account_endpoint_alias(
+    account_id: UUID, current_user_id: CurrentUser, db: Db
+) -> list[RecurringTemplateRead]:
+    return list(get_recurring_templates_by_account(session=db, account_id=account_id, current_user_id=current_user_id))

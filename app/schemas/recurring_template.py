@@ -28,7 +28,27 @@ class RecurringTemplateCreate(BaseModel):
     personal_responsibility_factor: Decimal | None = Field(None, ge=0, le=1)
 
 
+class RecurringTemplateUpdate(BaseModel):
+    # PATCH model
+    category_id: UUID | None = None
+    description: str | None = None
+    name: str | None = None
+    amount: Decimal | None = None
+    currency: Currency | None = None
+    frequency: FrequencyType | None = None
+    anchor_date: date | None = None
+    icon: str | None = None
+    is_active: bool | None = None
+    global_event_id: UUID | None = None
+    personal_responsibility_factor: Decimal | None = Field(None, ge=0, le=1)
+
+
 class RecurringTemplateRead(BaseModel):
+    id: UUID
+    account_id: UUID
+    category_id: UUID
+    created_by_user_id: UUID | None = None
+
     description: str
     name: str
     amount: Decimal
@@ -38,5 +58,8 @@ class RecurringTemplateRead(BaseModel):
     next_occurrence_date: date
     is_active: bool
     icon: str
+
+    global_event_id: UUID | None = None
+    personal_responsibility_factor: Decimal | None = None
 
     model_config = {"from_attributes": True}

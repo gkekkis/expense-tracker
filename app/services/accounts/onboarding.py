@@ -1,12 +1,9 @@
-"""
-Orchestration service for setting up new user accounts.
-Handles initial data seeding, such as default recurring templates
-to provide a 'ready-to-use' experience for new users.
-"""
+"""Helpers for seeding useful default data when a new account is created."""
 
 from __future__ import annotations
 
 import datetime
+from uuid import UUID
 
 from sqlalchemy.orm import Session
 
@@ -18,28 +15,22 @@ from ...domain.frequency_type import FrequencyType
 
 
 def process_new_account_onboarding(
-    session: Session, account: Account, category_map: dict[ExpenseCategory, str]
+    session: Session, account: Account, category_ids: dict[ExpenseCategory, UUID]
 ) -> Account:
-    """
-    Seeds initial data for a newly created account.
-    Creates a 'Welcome' Netflix template to demonstrate recurring logic.
-    """
-    # Define the 'Tutorial' Netflix template
+    """Seed a small recurring-template example for a new account."""
     recurring_template = RecurringTemplate(
         account_id=account.id,
-        category_id=category_map[ExpenseCategory.ENTERTAINMENT],
+        category_id=category_ids[ExpenseCategory.ENTERTAINMENT],
+        description="Netflix subscription",
         name="Netflix",
         amount=15.99,
         currency=Currency.EUR,
-        # We use today for both to trigger an immediate 'due' state
         anchor_date=datetime.date.today(),
         next_occurrence_date=datetime.date.today(),
-        icon="🍿",
+        icon="N",
         frequency=FrequencyType.MONTHLY,
         is_active=True,
     )
 
     session.add(recurring_template)
-
-    # Return the account object to match the signature and allow chaining
     return account

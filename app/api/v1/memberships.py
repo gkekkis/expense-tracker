@@ -47,7 +47,11 @@ def update_membership_by_id_endpoint(
     membership_id: UUID, membership_update: MembershipUpdate, current_user_id: CurrentUser, db: Db
 ) -> MembershipRead:
     updated_membership = update_membership_by_id(
-        session=db, membership_id=membership_id, current_user_id=current_user_id, role=membership_update.role
+        session=db,
+        membership_id=membership_id,
+        current_user_id=current_user_id,
+        role=membership_update.role,
+        default_contribution_share=membership_update.default_contribution_share,
     )
 
     db.commit()

@@ -11,6 +11,9 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.inspection import inspect as sa_inspect
 from sqlalchemy.orm import Session
 
+os.environ["DEV"] = "false"
+os.environ.setdefault("TESTING", "true")
+
 from app.api.dependencies import get_current_user_id, get_db
 from app.db.base import Base
 from app.db.models.account import Account

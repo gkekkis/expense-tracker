@@ -10,7 +10,6 @@ class FinancialProfileBase(BaseModel):
     monthly_net_income: Decimal = Field(default=0.0, ge=0)
     savings_percentage_goal: Decimal = Field(default=0.0, ge=0, le=100)
     emergency_fund_target: Decimal = Field(default=0.0, ge=0)
-    is_included_in_global_stats: bool = True
 
 
 class FinancialProfileUpdate(FinancialProfileBase):

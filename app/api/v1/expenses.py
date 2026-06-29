@@ -7,9 +7,8 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Query, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.db.models.currency import Currency
-
 from ...db.models.currency import CurrencyRate
+from ...domain.currencies.currency import Currency
 from ...schemas.expense import (
     ExpenseCreate,
     ExpenseFilterParams,
@@ -93,7 +92,9 @@ async def get_filtered_expenses_endpoint(
     curr_service: CurrencyService = Depends(CurrencyService),
 ) -> PaginatedExpenseResponse:
     # 1. Fetch raw items
-    items, total_count, _ = get_filtered_expenses(session=db, params=expense_filters, current_user_id=current_user_id)
+    items, total_count, all_matching = get_filtered_expenses(
+        session=db, params=expense_filters, current_user_id=current_user_id
+    )
 
     # 2. Use EUR as fallback
     calc_currency = target_currency or Currency.EUR
@@ -103,7 +104,9 @@ async def get_filtered_expenses_endpoint(
     background_tasks.add_task(curr_service.refresh_cache_if_stale, db)
 
     # 4. Perform math
-    normalized_total = await curr_service.get_normalized_total(db=db, expenses=items, target_currency=calc_currency)
+    normalized_total = await curr_service.get_normalized_total(
+        db=db, expenses=all_matching, target_currency=calc_currency
+    )
 
     # Get the timestamp to show the user how fresh the data is
     latest_rate_update = db.query(func.max(CurrencyRate.updated_at)).scalar()
@@ -120,7 +123,7 @@ async def get_filtered_expenses_endpoint(
     )
 
 
-@router.patch("/expenses/{expense_id}/approve", response_model=ExpenseRead)
+@router.patch("/{expense_id}/approve", response_model=ExpenseRead)
 def confirm_pending_expense_endpoint(expense_id: UUID, current_user_id: CurrentUser, db: Db) -> ExpenseRead:
     # Service should return the updated object
     updated_expense = confirm_pending_expense(session=db, expense_id=expense_id, current_user_id=current_user_id)
@@ -137,7 +140,7 @@ def get_account_expenses_with_filters(
     status: ExpenseStatus | None = Query(None),  # Allows ?status=PENDING
 ) -> list[ExpenseRead]:
     # Build the params object manually or pass directly to a service
-    params = ExpenseFilterParams(account_id=account_id, status=status)
+    params = ExpenseFilterParams(account_id=account_id, status=[status] if status else None)
 
     items, _, _ = get_filtered_expenses(session=db, params=params, current_user_id=current_user_id)
 

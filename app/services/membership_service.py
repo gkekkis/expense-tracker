@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Sequence
 from uuid import UUID
 
@@ -30,7 +31,12 @@ from ..schemas.membership import MembershipCreate  # noqa: TCH001
 
 
 def create_membership(session: Session, membership: MembershipCreate, current_user_id: UUID) -> Membership:
-    db_membership = Membership(user_id=membership.user_id, account_id=membership.account_id, role=membership.role)
+    db_membership = Membership(
+        user_id=membership.user_id,
+        account_id=membership.account_id,
+        role=membership.role,
+        default_contribution_share=membership.default_contribution_share,
+    )
 
     try:
         # Check if account exists
@@ -88,11 +94,15 @@ def get_membership_by_id(session: Session, membership_id: UUID) -> Membership:
 
 
 def update_membership_by_id(
-    session: Session, membership_id: UUID, current_user_id: UUID, role: MembershipRole | None = None
+    session: Session,
+    membership_id: UUID,
+    current_user_id: UUID,
+    role: MembershipRole | None = None,
+    default_contribution_share: Decimal | None = None,
 ) -> Membership:
     db_membership = session.get(Membership, membership_id)
     # Check if update has values
-    if role is None:
+    if role is None and default_contribution_share is None:
         raise MembershipUpdateNoFieldsProvidedError(membership_id=membership_id)
 
     # Check if membership exists
@@ -128,7 +138,12 @@ def update_membership_by_id(
             Membership.role == MembershipRole.OWNER, Membership.account_id == account_id
         )
     )
-    if db_membership.role == MembershipRole.OWNER and role != MembershipRole.OWNER and owners_count == 1:
+    if (
+        role is not None
+        and db_membership.role == MembershipRole.OWNER
+        and role != MembershipRole.OWNER
+        and owners_count == 1
+    ):
         raise MembershipLastOwnerDemoteForbiddenError(
             user_id=current_user_id, membership_id=membership_id, account_id=account_id
         )
@@ -136,7 +151,10 @@ def update_membership_by_id(
     # Ensure account is mutable
     ensure_account_mutable(account_id=account_id, account_status=account_status, operation=Operation.MEMBERSHIP_UPDATE)
 
-    db_membership.role = role
+    if role is not None:
+        db_membership.role = role
+    if default_contribution_share is not None:
+        db_membership.default_contribution_share = default_contribution_share
 
     session.flush()
 

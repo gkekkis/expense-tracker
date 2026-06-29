@@ -33,6 +33,28 @@ def test_accounts_patch_active_owner_can_rename(client, db_session, test_user_id
     assert resp.json()["name"] == "Renamed"
 
 
+def test_create_account_assigns_current_user_owner_and_seeds_categories(client, db_session, test_user_id):
+    owner = seed_user(db_session, id=UUID(test_user_id))
+
+    resp = client.post(
+        "/api/v1/accounts/", headers={"X-User-Id": str(owner.id)}, json={"name": "Fresh Account", "status": "ACTIVE"}
+    )
+    assert_http(resp, 200)
+    account_id = resp.json()["id"]
+
+    members_resp = client.get(f"/api/v1/accounts/{account_id}/memberships", headers={"X-User-Id": str(owner.id)})
+    assert_http(members_resp, 200)
+    members = members_resp.json()
+    assert len(members) == 1
+    assert members[0]["user_id"] == str(owner.id)
+    assert members[0]["role"] == "OWNER"
+
+    categories_resp = client.get(f"/api/v1/accounts/{account_id}/categories", headers={"X-User-Id": str(owner.id)})
+    assert_http(categories_resp, 200)
+    category_names = {category["name"] for category in categories_resp.json()}
+    assert {"Entertainment", "Miscellaneous"}.issubset(category_names)
+
+
 def test_accounts_patch_active_owner_can_deactivate(client, db_session):
     owner = seed_user(db_session)
     acc = seed_account(db_session, status=AccountStatus.ACTIVE)

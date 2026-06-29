@@ -1,15 +1,13 @@
 """Module for configuring the SQLAlchemy engine."""
 
+import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-
-dotenv_loaded = load_dotenv(Path(__file__).resolve().parent.parent / "../.env")
-
-import os
-
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
+
+dotenv_loaded = load_dotenv(Path(__file__).resolve().parent.parent / "../.env")
 
 # 2. Read DB settings from environment
 db_user = os.getenv("DB_USER")

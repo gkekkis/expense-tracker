@@ -22,6 +22,7 @@ class MembershipCreate(BaseModel):
     user_id: UUID
     account_id: UUID
     role: MembershipRole
+    default_contribution_share: Decimal = Field(default=Decimal("1.00"), ge=0, le=1)
 
 
 class MembershipRead(BaseModel):
