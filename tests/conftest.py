@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 os.environ["DEV"] = "false"
 os.environ.setdefault("TESTING", "true")
+os.environ.setdefault("CORS_ALLOW_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
 
 from app.api.dependencies import get_current_user_id, get_db
 from app.db.base import Base

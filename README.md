@@ -76,6 +76,14 @@ Start the API:
 uvicorn app.main:app --reload --port 8001
 ```
 
+Configure browser origins that may call the API:
+
+```env
+CORS_ALLOW_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://localhost:8000,http://127.0.0.1:8000
+```
+
+Use only your deployed frontend origin in production.
+
 Health check:
 
 ```text
