@@ -1,0 +1,1857 @@
+{
+  "info": {
+    "_postman_id": "b4cf82f0-8f2c-4d93-9f52-0e2b1a8a0a11",
+    "name": "Expense Tracker API",
+    "description": "End-to-end API flows for local development and manual QA. Run requests in order from top to bottom after selecting the local environment.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.environment.get('run_id')) {",
+          "  const runId = Date.now().toString();",
+          "  pm.environment.set('run_id', runId);",
+          "  pm.environment.set('owner_name', `Postman Owner ${runId}`);",
+          "  pm.environment.set('owner_email', `owner.${runId}@postman.local`);",
+          "  pm.environment.set('member_name', `Postman Member ${runId}`);",
+          "  pm.environment.set('member_email', `member.${runId}@postman.local`);",
+          "  pm.environment.set('viewer_name', `Postman Viewer ${runId}`);",
+          "  pm.environment.set('viewer_email', `viewer.${runId}@postman.local`);",
+          "  pm.environment.set('account_name', `Postman Household ${runId}`);",
+          "}",
+          "",
+          "const today = new Date();",
+          "const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);",
+          "pm.environment.set('today', today.toISOString().slice(0, 10));",
+          "pm.environment.set('expense_date', yesterday.toISOString().slice(0, 10));"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "00 Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/health/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "health",
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('API is healthy', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "01 Users & Auth",
+      "item": [
+        {
+          "name": "Create Owner User",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{owner_name}}\",\n  \"email\": \"{{owner_email}}\",\n  \"password\": \"{{default_password}}\",\n  \"status\": \"ACTIVE\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Owner user created', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.environment.set('owner_user_id', json.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Member User",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{member_name}}\",\n  \"email\": \"{{member_email}}\",\n  \"password\": \"{{default_password}}\",\n  \"status\": \"ACTIVE\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Member user created', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.environment.set('member_user_id', json.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Viewer User",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{viewer_name}}\",\n  \"email\": \"{{viewer_email}}\",\n  \"password\": \"{{default_password}}\",\n  \"status\": \"ACTIVE\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Viewer user created', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.environment.set('viewer_user_id', json.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login Owner",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{owner_email}}\",\n  \"password\": \"{{default_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Owner login succeeds', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.environment.set('owner_access_token', json.access_token);",
+                  "pm.environment.set('access_token', json.access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login Member",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{member_email}}\",\n  \"password\": \"{{default_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Member login succeeds', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.environment.set('member_access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login Viewer",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{viewer_email}}\",\n  \"password\": \"{{default_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Viewer login succeeds', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.environment.set('viewer_access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Current User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Authenticated owner is returned', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Owner id matches created user', function () {",
+                  "  pm.expect(pm.response.json().id).to.eql(pm.environment.get('owner_user_id'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Users",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Users are listed', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 Accounts & Categories",
+      "item": [
+        {
+          "name": "Create Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{account_name}}\",\n  \"status\": \"ACTIVE\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/accounts/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Account created', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.environment.set('account_id', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Accounts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/accounts/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Accounts are listed', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Account",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/accounts/{{account_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{account_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Account is readable by owner', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Account Name",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{account_name}} Updated\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/accounts/{{account_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{account_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Owner can rename account', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Account Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/accounts/{{account_id}}/categories",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{account_id}}",
+                "categories"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Default categories are available', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json()).to.be.an('array').that.is.not.empty;",
+                  "});",
+                  "const categories = pm.response.json();",
+                  "const category = categories.find((item) => item.name === 'Miscellaneous') || categories[0];",
+                  "pm.environment.set('category_id', category.id);",
+                  "pm.environment.set('category_name', category.name);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Current User Accounts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/me/accounts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "accounts"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Current user accounts are listed', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 Memberships & RBAC",
+      "item": [
+        {
+          "name": "Add Member To Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{member_user_id}}\",\n  \"account_id\": \"{{account_id}}\",\n  \"role\": \"MEMBER\",\n  \"default_contribution_share\": \"0.50\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/memberships/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "memberships",
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Member membership created', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.environment.set('member_membership_id', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add Viewer To Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{viewer_user_id}}\",\n  \"account_id\": \"{{account_id}}\",\n  \"role\": \"VIEWER\",\n  \"default_contribution_share\": \"0.00\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/memberships/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "memberships",
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Viewer membership created', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.environment.set('viewer_membership_id', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Account Memberships",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/accounts/{{account_id}}/memberships",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{account_id}}",
+                "memberships"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Account memberships are listed', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().length).to.be.at.least(3);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Member Contribution Share",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"default_contribution_share\": \"0.40\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/memberships/{{member_membership_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "memberships",
+                "{{member_membership_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Owner can update member contribution share', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Viewer Can Read Account",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{viewer_access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/accounts/{{account_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{account_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Viewer can read account', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Viewer Cannot Update Account",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{viewer_access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Viewer Rename Attempt\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/accounts/{{account_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{account_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Viewer cannot update account', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(pm.response.json().error_code).to.eql('ACCOUNT_UPDATE_FORBIDDEN');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 Expenses",
+      "item": [
+        {
+          "name": "Create Completed Expense",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"account_id\": \"{{account_id}}\",\n  \"description\": \"Postman grocery run\",\n  \"amount\": \"42.50\",\n  \"category_id\": \"{{category_id}}\",\n  \"expense_date\": \"{{expense_date}}\",\n  \"currency\": \"EUR\",\n  \"status\": \"Completed\",\n  \"personal_responsibility_factor\": \"0.25\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/expenses/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "expenses",
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Completed expense created', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.environment.set('expense_id', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Pending Expense",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"account_id\": \"{{account_id}}\",\n  \"description\": \"Postman pending bill\",\n  \"amount\": \"18.00\",\n  \"category_id\": \"{{category_id}}\",\n  \"expense_date\": \"{{expense_date}}\",\n  \"currency\": \"EUR\",\n  \"status\": \"Pending\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/expenses/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "expenses",
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Pending expense created', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.environment.set('pending_expense_id', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Pending Expense For Viewer Negative Test",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"account_id\": \"{{account_id}}\",\n  \"description\": \"Postman viewer blocked pending bill\",\n  \"amount\": \"12.00\",\n  \"category_id\": \"{{category_id}}\",\n  \"expense_date\": \"{{expense_date}}\",\n  \"currency\": \"EUR\",\n  \"status\": \"Pending\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/expenses/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "expenses",
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Pending expense for viewer negative test created', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.environment.set('viewer_block_pending_expense_id', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Expenses",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/expenses/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "expenses",
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Expenses are listed', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Expense",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/expenses/{{expense_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "expenses",
+                "{{expense_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Expense is readable by owner', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search Expenses",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"account_id\": \"{{account_id}}\",\n  \"status\": [\"Completed\", \"Pending\"],\n  \"category_id\": \"{{category_id}}\",\n  \"limit\": 20,\n  \"offset\": 0\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/expenses/search?target_currency=EUR",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "expenses",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "target_currency",
+                  "value": "EUR"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Expense search succeeds', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Search response is paginated', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('items');",
+                  "  pm.expect(json).to.have.property('total_count');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Expense",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Postman grocery run updated\",\n  \"amount\": \"45.25\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/expenses/{{expense_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "expenses",
+                "{{expense_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Owner can update expense', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Approve Pending Expense",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/expenses/{{pending_expense_id}}/approve",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "expenses",
+                "{{pending_expense_id}}",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Owner can approve pending expense', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().status).to.eql('Completed');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Member Can Create Expense",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{member_access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"account_id\": \"{{account_id}}\",\n  \"description\": \"Postman member expense\",\n  \"amount\": \"8.75\",\n  \"category_id\": \"{{category_id}}\",\n  \"expense_date\": \"{{expense_date}}\",\n  \"currency\": \"EUR\",\n  \"status\": \"Completed\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/expenses/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "expenses",
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Member can create expense', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.environment.set('member_expense_id', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Viewer Can Read Expense",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{viewer_access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/expenses/{{expense_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "expenses",
+                "{{expense_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Viewer can read expense', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Viewer Cannot Create Expense",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{viewer_access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"account_id\": \"{{account_id}}\",\n  \"description\": \"Viewer blocked expense\",\n  \"amount\": \"9.99\",\n  \"category_id\": \"{{category_id}}\",\n  \"expense_date\": \"{{expense_date}}\",\n  \"currency\": \"EUR\",\n  \"status\": \"Completed\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/expenses/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "expenses",
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Viewer cannot create expense', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(pm.response.json().error_code).to.eql('ACCOUNT_MUTATION_FORBIDDEN');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Viewer Cannot Approve Expense",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{viewer_access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/expenses/{{viewer_block_pending_expense_id}}/approve",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "expenses",
+                "{{viewer_block_pending_expense_id}}",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Viewer cannot approve expense', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(pm.response.json().error_code).to.eql('ACCOUNT_MUTATION_FORBIDDEN');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Member Expense",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/expenses/{{member_expense_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "expenses",
+                "{{member_expense_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Owner can delete member expense', function () {",
+                  "  pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 Recurring Templates",
+      "item": [
+        {
+          "name": "List Account Recurring Templates",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/accounts/{{account_id}}/recurring-templates",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{account_id}}",
+                "recurring-templates"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Recurring templates are listed', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Recurring Template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"account_id\": \"{{account_id}}\",\n  \"category_id\": \"{{category_id}}\",\n  \"description\": \"Postman monthly subscription\",\n  \"name\": \"Postman Subscription\",\n  \"amount\": \"19.99\",\n  \"currency\": \"EUR\",\n  \"frequency\": \"MONTHLY\",\n  \"anchor_date\": \"{{today}}\",\n  \"icon\": \"P\",\n  \"is_active\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/recurring-templates/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "recurring-templates",
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Recurring template created', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.environment.set('recurring_template_id', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Recurring Template",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": \"21.99\",\n  \"is_active\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/recurring-templates/{{recurring_template_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "recurring-templates",
+                "{{recurring_template_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Recurring template updated', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Viewer Cannot Create Recurring Template",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{viewer_access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"account_id\": \"{{account_id}}\",\n  \"category_id\": \"{{category_id}}\",\n  \"description\": \"Viewer blocked template\",\n  \"name\": \"Blocked Template\",\n  \"amount\": \"7.99\",\n  \"currency\": \"EUR\",\n  \"frequency\": \"MONTHLY\",\n  \"anchor_date\": \"{{today}}\",\n  \"icon\": \"V\",\n  \"is_active\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/recurring-templates/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "recurring-templates",
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Viewer cannot create recurring template', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(pm.response.json().error_code).to.eql('RECURRING_TEMPLATE_CREATE_FORBIDDEN');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Recurring Template",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/recurring-templates/{{recurring_template_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "recurring-templates",
+                "{{recurring_template_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Recurring template deleted', function () {",
+                  "  pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06 Financial Profile & Summaries",
+      "item": [
+        {
+          "name": "Get Financial Profile Before Setup",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/accounts/{{account_id}}/financial-profile",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{account_id}}",
+                "financial-profile"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Missing profile returns null or an object', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Financial Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"monthly_net_income\": \"3200.00\",\n  \"savings_percentage_goal\": \"20.00\",\n  \"emergency_fund_target\": \"10000.00\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/accounts/{{account_id}}/financial-profile",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{account_id}}",
+                "financial-profile"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Owner can update financial profile', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.environment.set('financial_profile_id', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Viewer Cannot Update Financial Profile",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{viewer_access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"monthly_net_income\": \"9999.00\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/accounts/{{account_id}}/financial-profile",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{account_id}}",
+                "financial-profile"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Viewer cannot update financial profile', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(pm.response.json().error_code).to.eql('FINANCIAL_PROFILE_UPDATE_FORBIDDEN');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Budget Status Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/summaries/budget-status?account_id={{account_id}}&status=Completed&status=Pending",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "summaries",
+                "budget-status"
+              ],
+              "query": [
+                {
+                  "key": "account_id",
+                  "value": "{{account_id}}"
+                },
+                {
+                  "key": "status",
+                  "value": "Completed"
+                },
+                {
+                  "key": "status",
+                  "value": "Pending"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Budget summary succeeds', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Budget summary contains core fields', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('total_income');",
+                  "  pm.expect(json).to.have.property('total_spent');",
+                  "  pm.expect(json).to.have.property('remaining_budget');",
+                  "  pm.expect(json).to.have.property('health_percentage');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
