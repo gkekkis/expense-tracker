@@ -39,6 +39,37 @@ Run migrations:
 alembic upgrade head
 ```
 
+Migration smoke test against a disposable database:
+
+```powershell
+@'
+from sqlalchemy import create_engine, text
+
+admin_url = "postgresql+psycopg2://postgres:postgres123@localhost:5432/postgres"
+db_name = "my_expense_report_migration_smoke"
+
+engine = create_engine(admin_url, isolation_level="AUTOCOMMIT")
+with engine.connect() as conn:
+    conn.execute(text(f"DROP DATABASE IF EXISTS {db_name} WITH (FORCE)"))
+    conn.execute(text(f"CREATE DATABASE {db_name}"))
+
+print(f"Created clean DB: {db_name}")
+'@ | .venv\Scripts\python.exe -
+
+$env:DEV = "False"
+$env:TESTING = "False"
+$env:DATABASE_URL = "postgresql+psycopg2://postgres:postgres123@localhost:5432/my_expense_report_migration_smoke"
+
+.venv\Scripts\python.exe -m alembic upgrade head
+.venv\Scripts\python.exe -m alembic current
+```
+
+Expected Alembic version:
+
+```text
+c4d9f2a1b730 (head)
+```
+
 Start the API:
 
 ```powershell
