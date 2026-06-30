@@ -32,6 +32,7 @@ Date: 2026-06-29
 - Simplified stale pre-commit configuration around core hygiene checks, gitleaks, and Ruff.
 - Ran Ruff format/check successfully.
 - Cleaned several encoding artifacts in the active Reflex UI pages.
+- Documented a disposable-database Alembic migration smoke test.
 
 ## Priority 0: Clean Baseline Before Product Work
 
@@ -55,7 +56,6 @@ Date: 2026-06-29
 - Verify migrations against both a fresh database and any existing local/dev databases.
 - Decide whether to reset local/dev data or backfill category IDs safely before relying on historical migrations with existing expenses.
 - Review enum usage and native/non-native enum consistency.
-- Add migration smoke test or documented migration verification command.
 - Remove destructive `init_db` flows from normal development paths.
 
 ## Priority 3: API Correctness
