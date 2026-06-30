@@ -34,7 +34,7 @@ Member and viewer requests use their own request-level bearer tokens.
 
 ## Resetting A Run
 
-The collection generates unique test emails from `run_id`.
+The collection generates unique test emails from `run_id` using the `expense-tracker.dev` domain.
 To start a clean logical run, clear `run_id` in the selected Postman environment before running again.
 
 If your database enforces unique emails, clearing `run_id` is enough because the next run will generate new email addresses.
