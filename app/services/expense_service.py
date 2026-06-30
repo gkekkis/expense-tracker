@@ -31,6 +31,7 @@ from ..schemas.expense import (
     ExpenseFilterParams,
 )
 from .accounts.account_service import get_account_by_id
+from .audit_log_service import expense_snapshot, record_audit_log
 from .authorization_service import get_account_ids_for_user, require_account_member, require_account_writer
 from .responsibility_service import ResponsibilityService
 
@@ -71,6 +72,15 @@ def create_expense(session: Session, expense_in: ExpenseCreate, created_by_user_
 
     session.add(db_expense)
     session.flush()
+    record_audit_log(
+        session=session,
+        actor_user_id=created_by_user_id,
+        account_id=db_expense.account_id,
+        action="expense.created",
+        entity_type="expense",
+        entity_id=db_expense.id,
+        after=expense_snapshot(db_expense),
+    )
     return db_expense
 
 
@@ -134,6 +144,8 @@ def update_expense_by_id(
     if all(v is None for v in [description, amount, category_id, expense_date, currency]):
         raise ExpenseUpdateNoFieldsProvidedError(expense_id=expense_id)
 
+    before = expense_snapshot(db_expense)
+
     if category_id is not None:
         category = session.get(Category, category_id)
         if not category or category.account_id != account_id:
@@ -151,6 +163,16 @@ def update_expense_by_id(
         db_expense.currency = currency
 
     session.flush()
+    record_audit_log(
+        session=session,
+        actor_user_id=current_user_id,
+        account_id=account_id,
+        action="expense.updated",
+        entity_type="expense",
+        entity_id=expense_id,
+        before=before,
+        after=expense_snapshot(db_expense),
+    )
     return db_expense
 
 
@@ -166,8 +188,19 @@ def delete_expense_by_id(session: Session, expense_id: UUID, current_user_id: UU
             user_id=current_user_id, expense_id=expense_id, account_id=db_expense.account_id
         )
 
+    before = expense_snapshot(db_expense)
+
     session.delete(db_expense)
     session.flush()
+    record_audit_log(
+        session=session,
+        actor_user_id=current_user_id,
+        account_id=before["account_id"],
+        action="expense.deleted",
+        entity_type="expense",
+        entity_id=expense_id,
+        before=before,
+    )
     return None
 
 
@@ -283,7 +316,20 @@ def confirm_pending_expense(session: Session, expense_id: UUID, current_user_id:
     require_account_writer(session=session, account_id=db_expense.account_id, user_id=current_user_id)
 
     if db_expense.status == ExpenseStatus.PENDING:
+        before = expense_snapshot(db_expense)
         db_expense.status = ExpenseStatus.COMPLETED
+        session.flush()
+        record_audit_log(
+            session=session,
+            actor_user_id=current_user_id,
+            account_id=db_expense.account_id,
+            action="expense.approved",
+            entity_type="expense",
+            entity_id=expense_id,
+            before=before,
+            after=expense_snapshot(db_expense),
+        )
+        return db_expense
 
     session.flush()
     return db_expense

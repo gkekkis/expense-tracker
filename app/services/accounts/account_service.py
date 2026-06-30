@@ -20,6 +20,7 @@ from ...domain.operations import Operation
 from ...domain.policies.account_state import ensure_account_mutable, ensure_inactive_account_reactivation_only
 from ...errors.errors import AccountDoesNotExistError, AccountUpdateForbiddenError, AccountUpdateNoFieldsProvidedError
 from ...schemas.account import AccountCreate
+from ..audit_log_service import account_snapshot, membership_snapshot, record_audit_log
 from ..authorization_service import require_account_member
 from .onboarding import process_new_account_onboarding
 
@@ -40,6 +41,25 @@ def create_account(session: Session, account_in: AccountCreate, current_user_id:
 
     db_account = process_new_account_onboarding(session=session, account=db_account, category_ids=category_ids)
     session.flush()
+
+    record_audit_log(
+        session=session,
+        actor_user_id=current_user_id,
+        account_id=db_account.id,
+        action="account.created",
+        entity_type="account",
+        entity_id=db_account.id,
+        after=account_snapshot(db_account),
+    )
+    record_audit_log(
+        session=session,
+        actor_user_id=current_user_id,
+        account_id=db_account.id,
+        action="membership.created",
+        entity_type="membership",
+        entity_id=owner_membership.id,
+        after=membership_snapshot(owner_membership),
+    )
 
     return db_account
 
@@ -103,6 +123,8 @@ def update_account_by_id(
     if access.membership.role != MembershipRole.OWNER:
         raise AccountUpdateForbiddenError(user_id=current_user_id, account_id=account_id)
 
+    before = account_snapshot(db_account)
+
     # Apply reactivation excpetion for OWNER
     if db_account.status == AccountStatus.INACTIVE and status == AccountStatus.ACTIVE:
         ensure_inactive_account_reactivation_only(
@@ -114,6 +136,16 @@ def update_account_by_id(
         db_account.status = status
 
         session.flush()
+        record_audit_log(
+            session=session,
+            actor_user_id=current_user_id,
+            account_id=account_id,
+            action="account.updated",
+            entity_type="account",
+            entity_id=account_id,
+            before=before,
+            after=account_snapshot(db_account),
+        )
 
         return db_account
 
@@ -127,6 +159,16 @@ def update_account_by_id(
         db_account.status = status
 
     session.flush()
+    record_audit_log(
+        session=session,
+        actor_user_id=current_user_id,
+        account_id=account_id,
+        action="account.updated",
+        entity_type="account",
+        entity_id=account_id,
+        before=before,
+        after=account_snapshot(db_account),
+    )
 
     return db_account
 

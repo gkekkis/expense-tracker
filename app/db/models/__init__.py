@@ -1,5 +1,6 @@
 from .user import User
 from .account import Account
+from .audit_log import AuditLog
 from .membership import Membership
 from .expense import Expense
 from .category import Category
