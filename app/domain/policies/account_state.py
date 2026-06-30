@@ -5,11 +5,11 @@ from __future__ import annotations
 import logging
 from uuid import UUID
 
-logger = logging.getLogger(__name__)
-
 from ...errors.errors import AccountInactiveError
 from ..accounts.account import AccountStatus
 from ..operations import Operation
+
+logger = logging.getLogger(__name__)
 
 
 def ensure_account_mutable(account_id: UUID, account_status: AccountStatus, operation: Operation) -> None:

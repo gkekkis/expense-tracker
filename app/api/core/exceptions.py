@@ -8,10 +8,12 @@ from ...errors.errors import (
     AccountInactiveError,
     AccountUpdateForbiddenError,
     AccountUpdateNoFieldsProvidedError,
+    CategoryNotFoundError,
     ExpenseDeleteForbiddenError,
     ExpenseDoesNotExistError,
     ExpenseUpdateForbiddenError,
     ExpenseUpdateNoFieldsProvidedError,
+    InvalidUserShareError,
     MembershipAlreadyExistError,
     MembershipCreateForbiddenError,
     MembershipDeleteForbiddenError,
@@ -21,7 +23,12 @@ from ...errors.errors import (
     MembershipLastOwnerDemoteForbiddenError,
     MembershipUpdateForbiddenError,
     MembershipUpdateNoFieldsProvidedError,
+    ProfileUpdateForbiddenError,
+    RecurringTemplateCreateForbiddenError,
+    RecurringTemplateDoesNotExistError,
+    RecurringTemplateUpdateForbiddenError,
     UserDoesNotExistError,
+    UserHasNoAccountsError,
     UserNotMemberOfTheAccountError,
 )
 
@@ -48,6 +55,17 @@ def register_exception_handlers(app: FastAPI):
             content={
                 "error_code": "USER_NOT_MEMBER_OF_THE_ACCOUNT",
                 "detail": f"User with id `{exc.user_id}` is not a member of the account with id `{exc.account_id}`.",
+                "path": request.url.path,
+            },
+        )
+
+    @app.exception_handler(UserHasNoAccountsError)
+    async def user_has_no_accounts_handler(request: Request, exc: UserHasNoAccountsError) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={
+                "error_code": "USER_HAS_NO_ACCOUNTS",
+                "detail": f"User with id `{exc.user_id}` has no accounts.",
                 "path": request.url.path,
             },
         )
@@ -266,6 +284,86 @@ def register_exception_handlers(app: FastAPI):
                 "error_code": "MEMBERSHIP_FIRST_OWNER_REQUIRED",
                 "detail": f"Can not create membership for account with id "
                 f"`{exc.account_id}`. Need to have at least one OWNER.",
+                "path": request.url.path,
+            },
+        )
+
+    # CATEGORIES
+    @app.exception_handler(CategoryNotFoundError)
+    async def expense_category_does_not_exist_handler(request: Request, exc: CategoryNotFoundError) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={
+                "error_code": "EXPENSE_CATEGORY_NOT_FOUND",
+                "detail": f"Expense category with id `{exc.category_id}` does not exist.",
+                "path": request.url.path,
+            },
+        )
+
+    # FINANCIAL PROFILES
+    @app.exception_handler(ProfileUpdateForbiddenError)
+    async def financial_profile_update_forbidden_handler(
+        request: Request, exc: ProfileUpdateForbiddenError
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={
+                "error_code": "FINANCIAL_PROFILE_UPDATE_FORBIDDEN",
+                "detail": f"User with id `{exc.user_id}` and account id `{exc.account_id}` is not authorized to "
+                f"update financial profile with id `{exc.account_id}`.",
+                "path": request.url.path,
+            },
+        )
+
+    @app.exception_handler(InvalidUserShareError)
+    async def calculated_user_share_handler(request: Request, exc: InvalidUserShareError) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "error_code": "INVALID_USER_SHARE",
+                "detail": f"User share must be between 0 and 1. Got `{exc.personal_responsibility_factor}`",
+                "path": request.url.path,
+            },
+        )
+
+    # RECURRING TEMPLATES
+    @app.exception_handler(RecurringTemplateDoesNotExistError)
+    async def recurring_template_not_found_handler(
+        request: Request, exc: RecurringTemplateDoesNotExistError
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={
+                "error_code": "RECURRING_TEMPLATE_NOT_FOUND",
+                "detail": f"Recurring template with id `{exc.recurring_template_id}` does not exist.",
+                "path": request.url.path,
+            },
+        )
+
+    @app.exception_handler(RecurringTemplateUpdateForbiddenError)
+    async def recurring_template_update_forbidden_handler(
+        request: Request, exc: RecurringTemplateUpdateForbiddenError
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={
+                "error_code": "RECURRING_TEMPLATE_UPDATE_FORBIDDEN",
+                "detail": f"User with id `{exc.user_id}` and account id `{exc.account_id}` is not authorized to "
+                f"modify recurring template with id `{exc.recurring_template_id}`.",
+                "path": request.url.path,
+            },
+        )
+
+    @app.exception_handler(RecurringTemplateCreateForbiddenError)
+    async def recurring_template_create_forbidden_handler(
+        request: Request, exc: RecurringTemplateCreateForbiddenError
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={
+                "error_code": "RECURRING_TEMPLATE_CREATE_FORBIDDEN",
+                "detail": f"User with id `{exc.user_id}` is not authorized to create recurring templates for "
+                f"account `{exc.account_id}`.",
                 "path": request.url.path,
             },
         )

@@ -1,5 +1,6 @@
 """Module containing custom errors."""
 
+from decimal import Decimal
 from uuid import UUID
 
 from ..domain.operations import Operation
@@ -19,6 +20,11 @@ class UserNotMemberOfTheAccountError(ExpenseTrackerProjectError):
     def __init__(self, user_id: UUID, account_id: UUID):
         self.user_id = user_id
         self.account_id = account_id
+
+
+class UserHasNoAccountsError(ExpenseTrackerProjectError):
+    def __init__(self, user_id: UUID):
+        self.user_id = user_id
 
 
 # ACCOUNTS
@@ -122,4 +128,42 @@ class MembershipCreateForbiddenError(ExpenseTrackerProjectError):
 
 class MembershipFirstOwnerRequiredError(ExpenseTrackerProjectError):
     def __init__(self, account_id: UUID):
+        self.account_id = account_id
+
+
+# CATEGORIES
+class CategoryNotFoundError(ExpenseTrackerProjectError):
+    def __init__(self, category_id: UUID):
+        self.category_id = category_id
+
+
+# FINANCIAL PROFILES
+class ProfileUpdateForbiddenError(ExpenseTrackerProjectError):
+    def __init__(self, financial_profile_id: UUID, account_id: UUID, user_id: UUID):
+        self.financial_profile_id = financial_profile_id
+        self.account_id = account_id
+        self.user_id = user_id
+
+
+class InvalidUserShareError(ExpenseTrackerProjectError):
+    def __init__(self, personal_responsibility_factor: Decimal):
+        self.personal_responsibility_factor = personal_responsibility_factor
+
+
+# RECURRING TEMPLATES
+class RecurringTemplateDoesNotExistError(ExpenseTrackerProjectError):
+    def __init__(self, recurring_template_id: UUID):
+        self.recurring_template_id = recurring_template_id
+
+
+class RecurringTemplateUpdateForbiddenError(ExpenseTrackerProjectError):
+    def __init__(self, user_id: UUID, recurring_template_id: UUID, account_id: UUID):
+        self.user_id = user_id
+        self.recurring_template_id = recurring_template_id
+        self.account_id = account_id
+
+
+class RecurringTemplateCreateForbiddenError(ExpenseTrackerProjectError):
+    def __init__(self, user_id: UUID, account_id: UUID):
+        self.user_id = user_id
         self.account_id = account_id

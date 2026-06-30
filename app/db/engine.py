@@ -1,16 +1,13 @@
 """Module for configuring the SQLAlchemy engine."""
 
+import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-
-dotenv_loaded = load_dotenv(Path(__file__).resolve().parent.parent / "../.env")
-
-import os
-
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 
+dotenv_loaded = load_dotenv(Path(__file__).resolve().parent.parent / "../.env")
 
 # 2. Read DB settings from environment
 db_user = os.getenv("DB_USER")
@@ -40,9 +37,19 @@ if missing_vars:
     )
 
 # 4. Build the database URL using the env values
-DATABASE_URL = (
-    f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
-)
+is_dev = os.getenv("DEV", "False").lower() == "true"
+is_test = os.getenv("TESTING", "False").lower() == "true"
+
+assert not (
+    is_dev and is_test
+), f"DEV and TESTING flags must not be both `True`.\nDEV: `{is_dev}`\tTESTING: `{is_test}`"
+
+if is_dev:
+    DATABASE_URL = os.getenv("TEST_DATABASE_URL")
+elif is_test:
+    DATABASE_URL = os.getenv("PYTEST_DATABASE_URL")
+else:
+    DATABASE_URL = f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
 
 # 5. Create the SQLAlchemy engine
 engine: Engine = create_engine(DATABASE_URL)

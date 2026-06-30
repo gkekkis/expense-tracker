@@ -1,12 +1,13 @@
 # Files
 .env
 settings.json
-.pre-commit-config.yaml
-pyproject.toml
-*.txt
 *.pyc
+*.log
+temp.txt
+tests/*.db
 
 #Folders
+misc/
 data/
 .venv/
 .vscode/
@@ -15,3 +16,12 @@ src/config files
 notebooks/
 output_dir/
 */__pycache__/
+frontend_react_archived/
+.tmp_pdf/
+
+# Reflex
+ui_reflex/**/.web/
+ui_reflex/**/__pycache__/
+ui_reflex/**/.reflex/
+ui_reflex/**/.states/
+

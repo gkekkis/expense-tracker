@@ -10,7 +10,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ...domain.users.user import UserStatus
-from ..base import Base
+from ..declarative_base import Base
 
 
 class User(Base):

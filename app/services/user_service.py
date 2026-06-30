@@ -8,8 +8,10 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session  # noqa: TCH002
 
+from ..db.models.account import Account
+from ..db.models.membership import Membership
 from ..db.models.user import User
-from ..errors.errors import UserDoesNotExistError
+from ..errors.errors import UserDoesNotExistError, UserHasNoAccountsError
 from ..schemas.user import UserCreate  # noqa: TCH001
 
 
@@ -31,3 +33,20 @@ def get_user_by_id(session: Session, user_id: UUID) -> User:
     if db_user is None:
         raise UserDoesNotExistError(user_id=user_id)
     return db_user
+
+
+def get_accounts_by_id(session: Session, current_user_id: UUID) -> Sequence[Account]:
+    # Check if user exists
+    db_user = session.get(User, current_user_id)
+    if db_user is None:
+        raise UserDoesNotExistError(user_id=current_user_id)
+
+    # Get all current user accounts
+    current_user_accounts = session.scalars(
+        select(Account).join(Membership).where(Membership.user_id == current_user_id)
+    ).all()
+
+    if current_user_accounts is None or not len(current_user_accounts):
+        raise UserHasNoAccountsError(user_id=current_user_id)
+
+    return current_user_accounts
