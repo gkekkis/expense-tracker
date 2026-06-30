@@ -36,6 +36,7 @@ For the main local database configured by `DB_NAME` / `DATABASE_URL`:
 ```powershell
 $env:DEV = "False"
 $env:TESTING = "False"
+$env:AUTH_SECRET_KEY = "local-postman-dev-secret-change-me"
 ```
 
 Then start the backend:
