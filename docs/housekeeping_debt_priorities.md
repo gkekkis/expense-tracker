@@ -35,6 +35,8 @@ Date: 2026-06-29
 - Documented a disposable-database Alembic migration smoke test.
 - Added signed bearer-token authentication baseline with password hashing.
 - Restricted `X-User-Id` authentication to local prototype and test flows.
+- Added account-scoped read authorization for accounts, expenses, memberships, categories, financial profiles, and budget summaries.
+- Added API regression tests proving non-members cannot read account-owned resources.
 
 ## Priority 0: Clean Baseline Before Product Work
 
@@ -47,8 +49,7 @@ Date: 2026-06-29
 ## Priority 1: Security And Data Isolation
 
 - Remove `X-User-Id` fallback before any non-local deployment.
-- Add account-scoped authorization helpers and use them consistently.
-- Remove or restrict global list endpoints for accounts, users, memberships, and expenses.
+- Restrict global user discovery with an invite/search flow instead of listing every user.
 - Enforce VIEWER read-only behavior in backend services.
 - Add CORS configuration for the Reflex/frontend app.
 - Add audit logging for account, membership, profile, and expense changes.

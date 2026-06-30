@@ -7,10 +7,10 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..db.models.expense import Expense
-from ..db.models.membership import Membership
 from ..domain.expenses.expense import ExpenseStatus
 from ..schemas.expense import ExpenseFilterParams
 from ..schemas.financial_profile import BudgetStatus
+from .authorization_service import get_account_ids_for_user, require_account_member
 from .profile_service import ProfileService
 
 
@@ -53,19 +53,23 @@ class SummaryService:
     ) -> BudgetStatus:
         if account_id:
             filters.account_id = account_id
+            require_account_member(session=session, account_id=account_id, user_id=user_id)
 
         total_spent = SummaryService.get_user_summary(session=session, user_id=user_id, filters=filters)
         total_income = Decimal("0.00")
 
         if account_id:
-            user_financial_profile = ProfileService().get_profile_by_account_id(session=session, account_id=account_id)
+            user_financial_profile = ProfileService().get_profile_by_account_id(
+                session=session, account_id=account_id, current_user_id=user_id
+            )
             if user_financial_profile:
                 total_income = user_financial_profile.monthly_net_income
         else:
-            membership_stmt = select(Membership.account_id).where(Membership.user_id == user_id)
-            user_account_ids = session.scalars(membership_stmt).all()
+            user_account_ids = get_account_ids_for_user(session=session, user_id=user_id)
             for acc_id in user_account_ids:
-                user_financial_profile = ProfileService().get_profile_by_account_id(session=session, account_id=acc_id)
+                user_financial_profile = ProfileService().get_profile_by_account_id(
+                    session=session, account_id=acc_id, current_user_id=user_id
+                )
                 if user_financial_profile:
                     total_income += user_financial_profile.monthly_net_income
 

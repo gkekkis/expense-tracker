@@ -45,14 +45,14 @@ def create_expense_endpoint(expense_in: ExpenseCreate, db: Db, created_by_user_i
 
 
 @router.get("/", response_model=list[ExpenseRead])
-def get_all_expenses_endpoint(db: Db) -> list[ExpenseRead]:
-    db_expenses = get_all_expenses(session=db)
+def get_all_expenses_endpoint(current_user_id: CurrentUser, db: Db) -> list[ExpenseRead]:
+    db_expenses = get_all_expenses(session=db, current_user_id=current_user_id)
     return db_expenses
 
 
 @router.get("/{expense_id}", response_model=ExpenseRead)
-def get_expense_by_id_endpoint(expense_id: UUID, db: Db) -> ExpenseRead:
-    db_expense = get_expense_by_id(session=db, expense_id=expense_id)
+def get_expense_by_id_endpoint(expense_id: UUID, current_user_id: CurrentUser, db: Db) -> ExpenseRead:
+    db_expense = get_expense_by_id(session=db, expense_id=expense_id, current_user_id=current_user_id)
     return db_expense
 
 
