@@ -31,14 +31,14 @@ def create_membership_endpoint(membership_in: MembershipCreate, current_user_id:
 
 
 @router.get("/", response_model=list[MembershipRead])
-def get_all_memberships_endpoint(db: Db) -> list[MembershipRead]:
-    db_memberships = get_all_memberships(session=db)
+def get_all_memberships_endpoint(current_user_id: CurrentUser, db: Db) -> list[MembershipRead]:
+    db_memberships = get_all_memberships(session=db, current_user_id=current_user_id)
     return db_memberships
 
 
 @router.get("/{membership_id}", response_model=MembershipRead)
-def get_memberhsip_by_id_endpoint(membership_id: UUID, db: Db) -> MembershipRead:
-    db_membership = get_membership_by_id(session=db, membership_id=membership_id)
+def get_memberhsip_by_id_endpoint(membership_id: UUID, current_user_id: CurrentUser, db: Db) -> MembershipRead:
+    db_membership = get_membership_by_id(session=db, membership_id=membership_id, current_user_id=current_user_id)
     return db_membership
 
 

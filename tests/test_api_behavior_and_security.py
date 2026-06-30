@@ -5,6 +5,7 @@ from conftest import assert_http, seed_account, seed_category, seed_expense, see
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from app.db.models.financial_profile import FinancialProfile
 from app.db.models.membership import MembershipRole
 from app.domain.accounts.account import AccountStatus
 
@@ -172,3 +173,119 @@ def test_expense_patch_no_fields_provided_returns_400(client, db_session, test_c
         json={},  # empty -> no fields provided
     )
     assert_http(resp, 400, "EXPENSE_UPDATE_NO_FIELDS_PROVIDED")
+
+
+def test_account_list_only_returns_current_user_accounts(client, db_session):
+    alice = seed_user(db_session)
+    bob = seed_user(db_session)
+    alice_account = seed_account(db_session, name="Alice Account")
+    bob_account = seed_account(db_session, name="Bob Account")
+    seed_membership(db_session, user_id=alice.id, account_id=alice_account.id, role=MembershipRole.OWNER)
+    seed_membership(db_session, user_id=bob.id, account_id=bob_account.id, role=MembershipRole.OWNER)
+
+    resp = client.get("/api/v1/accounts/", params={"current_user_id": str(alice.id)})
+
+    assert_http(resp, 200)
+    account_ids = {item["id"] for item in resp.json()}
+    assert account_ids == {str(alice_account.id)}
+
+
+def test_account_read_rejects_non_member(client, db_session):
+    alice = seed_user(db_session)
+    bob = seed_user(db_session)
+    bob_account = seed_account(db_session)
+    seed_membership(db_session, user_id=bob.id, account_id=bob_account.id, role=MembershipRole.OWNER)
+
+    resp = client.get(f"/api/v1/accounts/{bob_account.id}", params={"current_user_id": str(alice.id)})
+
+    assert_http(resp, 403, "USER_NOT_MEMBER_OF_THE_ACCOUNT")
+
+
+def test_expense_list_only_returns_current_user_account_expenses(client, db_session):
+    alice = seed_user(db_session)
+    bob = seed_user(db_session)
+    alice_account = seed_account(db_session)
+    bob_account = seed_account(db_session)
+    seed_membership(db_session, user_id=alice.id, account_id=alice_account.id, role=MembershipRole.OWNER)
+    seed_membership(db_session, user_id=bob.id, account_id=bob_account.id, role=MembershipRole.OWNER)
+    alice_category = seed_category(db=db_session, account_id=alice_account.id, name="Alice General", emoji="A")
+    bob_category = seed_category(db=db_session, account_id=bob_account.id, name="Bob General", emoji="B")
+    alice_expense = seed_expense(
+        db_session, account_id=alice_account.id, created_by_user_id=alice.id, test_category=alice_category
+    )
+    seed_expense(db_session, account_id=bob_account.id, created_by_user_id=bob.id, test_category=bob_category)
+
+    resp = client.get("/api/v1/expenses/", params={"current_user_id": str(alice.id)})
+
+    assert_http(resp, 200)
+    expense_ids = {item["id"] for item in resp.json()}
+    assert expense_ids == {str(alice_expense.id)}
+
+
+def test_expense_read_rejects_non_member(client, db_session):
+    alice = seed_user(db_session)
+    bob = seed_user(db_session)
+    bob_account = seed_account(db_session)
+    seed_membership(db_session, user_id=bob.id, account_id=bob_account.id, role=MembershipRole.OWNER)
+    bob_category = seed_category(db=db_session, account_id=bob_account.id, name="Bob General", emoji="B")
+    bob_expense = seed_expense(
+        db_session, account_id=bob_account.id, created_by_user_id=bob.id, test_category=bob_category
+    )
+
+    resp = client.get(f"/api/v1/expenses/{bob_expense.id}", params={"current_user_id": str(alice.id)})
+
+    assert_http(resp, 403, "USER_NOT_MEMBER_OF_THE_ACCOUNT")
+
+
+def test_membership_list_only_returns_current_user_account_memberships(client, db_session):
+    alice = seed_user(db_session)
+    bob = seed_user(db_session)
+    alice_account = seed_account(db_session)
+    bob_account = seed_account(db_session)
+    alice_membership = seed_membership(
+        db_session, user_id=alice.id, account_id=alice_account.id, role=MembershipRole.OWNER
+    )
+    seed_membership(db_session, user_id=bob.id, account_id=bob_account.id, role=MembershipRole.OWNER)
+
+    resp = client.get("/api/v1/memberships/", params={"current_user_id": str(alice.id)})
+
+    assert_http(resp, 200)
+    membership_ids = {item["id"] for item in resp.json()}
+    assert membership_ids == {str(alice_membership.id)}
+
+
+def test_membership_read_rejects_non_member(client, db_session):
+    alice = seed_user(db_session)
+    bob = seed_user(db_session)
+    bob_account = seed_account(db_session)
+    bob_membership = seed_membership(db_session, user_id=bob.id, account_id=bob_account.id, role=MembershipRole.OWNER)
+
+    resp = client.get(f"/api/v1/memberships/{bob_membership.id}", params={"current_user_id": str(alice.id)})
+
+    assert_http(resp, 403, "USER_NOT_MEMBER_OF_THE_ACCOUNT")
+
+
+def test_financial_profile_read_rejects_non_member(client, db_session):
+    alice = seed_user(db_session)
+    bob = seed_user(db_session)
+    bob_account = seed_account(db_session)
+    seed_membership(db_session, user_id=bob.id, account_id=bob_account.id, role=MembershipRole.OWNER)
+    db_session.add(FinancialProfile(account_id=bob_account.id))
+    db_session.flush()
+
+    resp = client.get(f"/api/v1/accounts/{bob_account.id}/financial-profile", params={"current_user_id": str(alice.id)})
+
+    assert_http(resp, 403, "USER_NOT_MEMBER_OF_THE_ACCOUNT")
+
+
+def test_budget_summary_rejects_non_member_account(client, db_session):
+    alice = seed_user(db_session)
+    bob = seed_user(db_session)
+    bob_account = seed_account(db_session)
+    seed_membership(db_session, user_id=bob.id, account_id=bob_account.id, role=MembershipRole.OWNER)
+
+    resp = client.get(
+        "/api/v1/summaries/budget-status", params={"account_id": str(bob_account.id), "current_user_id": str(alice.id)}
+    )
+
+    assert_http(resp, 403, "USER_NOT_MEMBER_OF_THE_ACCOUNT")

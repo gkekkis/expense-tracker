@@ -28,6 +28,7 @@ from ..errors.errors import (
     MembershipUpdateNoFieldsProvidedError,
 )
 from ..schemas.membership import MembershipCreate  # noqa: TCH001
+from .authorization_service import get_account_ids_for_user, require_account_member
 
 
 def create_membership(session: Session, membership: MembershipCreate, current_user_id: UUID) -> Membership:
@@ -82,14 +83,18 @@ def create_membership(session: Session, membership: MembershipCreate, current_us
     return db_membership
 
 
-def get_all_memberships(session: Session) -> Sequence[Membership]:
-    return session.scalars(select(Membership)).all()
+def get_all_memberships(session: Session, current_user_id: UUID) -> Sequence[Membership]:
+    account_ids = get_account_ids_for_user(session=session, user_id=current_user_id)
+    if not account_ids:
+        return []
+    return session.scalars(select(Membership).where(Membership.account_id.in_(account_ids))).all()
 
 
-def get_membership_by_id(session: Session, membership_id: UUID) -> Membership:
+def get_membership_by_id(session: Session, membership_id: UUID, current_user_id: UUID) -> Membership:
     db_membership = session.get(Membership, membership_id)
     if db_membership is None:
         raise MembershipDoesNotExistError(membership_id=membership_id)
+    require_account_member(session=session, account_id=db_membership.account_id, user_id=current_user_id)
     return db_membership
 
 

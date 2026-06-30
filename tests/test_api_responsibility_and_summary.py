@@ -1,14 +1,17 @@
 from decimal import Decimal
 from uuid import uuid4
 
+from conftest import seed_category
 
-def test_fallback_to_membership_share(client, test_user, joint_account, test_category):
+
+def test_fallback_to_membership_share(client, db_session, test_user, joint_account):
     """Verify that if no factor is sent, the 70% membership share is used."""
+    joint_category = seed_category(db=db_session, account_id=joint_account.id, name="Joint", emoji="J")
     payload = {
         "account_id": str(joint_account.id),
         "description": "Shared Internet",
         "amount": 100.00,
-        "category_id": str(test_category.id),
+        "category_id": str(joint_category.id),
         "expense_date": "2024-02-10",
         "currency": "EUR",
     }
@@ -23,9 +26,11 @@ def test_fallback_to_membership_share(client, test_user, joint_account, test_cat
 
 
 def test_global_id_deduplication_in_summary(
-    client, user_token_headers, test_user, joint_account, personal_account, test_category
+    client, db_session, user_token_headers, test_user, joint_account, personal_account
 ):
     global_id = str(uuid4())
+    joint_category = seed_category(db=db_session, account_id=joint_account.id, name="Joint", emoji="J")
+    personal_category = seed_category(db=db_session, account_id=personal_account.id, name="Personal", emoji="P")
 
     # 1. Create in Joint
     client.post(
@@ -35,7 +40,7 @@ def test_global_id_deduplication_in_summary(
             "description": "Rent",
             "amount": 100.00,
             "global_event_id": global_id,
-            "category_id": str(test_category.id),
+            "category_id": str(joint_category.id),
             "expense_date": "2024-02-10",  # Added
             "currency": "EUR",  # Added
         },
@@ -50,7 +55,7 @@ def test_global_id_deduplication_in_summary(
             "description": "Rent Mirror",
             "amount": 100.00,
             "global_event_id": global_id,
-            "category_id": str(test_category.id),
+            "category_id": str(personal_category.id),
             "expense_date": "2024-02-10",  # Added
             "currency": "EUR",  # Added
         },
@@ -71,13 +76,14 @@ def test_global_id_deduplication_in_summary(
     assert Decimal(str(data["total_spent"])) < Decimal("170.00")
 
 
-def test_manual_factor_override(client, user_token_headers, joint_account, test_category):
+def test_manual_factor_override(client, db_session, user_token_headers, joint_account):
     """Verify that a manual factor (e.g. 1.0) overrides the membership default (0.7)."""
+    joint_category = seed_category(db=db_session, account_id=joint_account.id, name="Joint", emoji="J")
     payload = {
         "account_id": str(joint_account.id),
         "description": "I pay all of this one",
         "amount": 100.00,
-        "category_id": str(test_category.id),
+        "category_id": str(joint_category.id),
         "expense_date": "2024-02-10",
         "currency": "EUR",
         "personal_responsibility_factor": 1.0,  # Overriding the 0.7 membership default
@@ -91,8 +97,11 @@ def test_manual_factor_override(client, user_token_headers, joint_account, test_
     assert Decimal(str(data["calculated_user_share"])) == Decimal("100.00")
 
 
-def test_summary_account_isolation(client, user_token_headers, joint_account, personal_account, test_category):
+def test_summary_account_isolation(client, db_session, user_token_headers, joint_account, personal_account):
     """Verify summary only counts expenses for the mandatory account_id provided."""
+    joint_category = seed_category(db=db_session, account_id=joint_account.id, name="Joint", emoji="J")
+    personal_category = seed_category(db=db_session, account_id=personal_account.id, name="Personal", emoji="P")
+
     # 1. Create $50 in Joint Account
     client.post(
         "/api/v1/expenses",
@@ -100,7 +109,7 @@ def test_summary_account_isolation(client, user_token_headers, joint_account, pe
             "account_id": str(joint_account.id),
             "description": "Joint Expense",
             "amount": 50.00,
-            "category_id": str(test_category.id),
+            "category_id": str(joint_category.id),
             "expense_date": "2024-02-10",
             "currency": "EUR",
         },
@@ -114,7 +123,7 @@ def test_summary_account_isolation(client, user_token_headers, joint_account, pe
             "account_id": str(personal_account.id),
             "description": "Personal Expense",
             "amount": 100.00,
-            "category_id": str(test_category.id),
+            "category_id": str(personal_category.id),
             "expense_date": "2024-02-10",
             "currency": "EUR",
         },
