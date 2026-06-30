@@ -10,7 +10,8 @@ from sqlalchemy.orm import Session
 
 from ..db.models.account import Account
 from ..db.models.membership import Membership
-from ..errors.errors import AccountDoesNotExistError, UserNotMemberOfTheAccountError
+from ..domain.memberships.membership import MembershipRole
+from ..errors.errors import AccountDoesNotExistError, AccountMutationForbiddenError, UserNotMemberOfTheAccountError
 
 
 @dataclass(frozen=True)
@@ -32,6 +33,14 @@ def require_account_member(session: Session, account_id: UUID, user_id: UUID) ->
         raise UserNotMemberOfTheAccountError(user_id=user_id, account_id=account_id)
 
     return AccountAccess(account=account, membership=membership)
+
+
+def require_account_writer(session: Session, account_id: UUID, user_id: UUID) -> AccountAccess:
+    """Return account access details or raise when the user's role is read-only."""
+    access = require_account_member(session=session, account_id=account_id, user_id=user_id)
+    if access.membership.role == MembershipRole.VIEWER:
+        raise AccountMutationForbiddenError(user_id=user_id, account_id=account_id)
+    return access
 
 
 def get_account_ids_for_user(session: Session, user_id: UUID) -> list[UUID]:

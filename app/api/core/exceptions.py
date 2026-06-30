@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from ...errors.errors import (
     AccountDoesNotExistError,
     AccountInactiveError,
+    AccountMutationForbiddenError,
     AccountUpdateForbiddenError,
     AccountUpdateNoFieldsProvidedError,
     CategoryNotFoundError,
@@ -114,6 +115,18 @@ def register_exception_handlers(app: FastAPI):
             content={
                 "error_code": "ACCOUNT_UPDATE_FORBIDDEN",
                 "detail": f"User with id `{exc.user_id}` is not authorized to update account"
+                f" with id `{exc.account_id}`.",
+                "path": request.url.path,
+            },
+        )
+
+    @app.exception_handler(AccountMutationForbiddenError)
+    async def account_mutation_forbidden_handler(request: Request, exc: AccountMutationForbiddenError) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={
+                "error_code": "ACCOUNT_MUTATION_FORBIDDEN",
+                "detail": f"User with id `{exc.user_id}` is not authorized to mutate account"
                 f" with id `{exc.account_id}`.",
                 "path": request.url.path,
             },
