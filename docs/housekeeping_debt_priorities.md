@@ -39,6 +39,7 @@ Date: 2026-06-29
 - Added API regression tests proving non-members cannot read account-owned resources.
 - Restricted global user discovery to local prototype flows and added authenticated exact-email user search.
 - Added environment-driven CORS configuration for frontend/API browser access.
+- Added internal audit logs for account, membership, expense, and financial-profile mutations.
 
 ## Priority 0: Clean Baseline Before Product Work
 
@@ -52,7 +53,6 @@ Date: 2026-06-29
 
 - Remove `X-User-Id` fallback before any non-local deployment.
 - Enforce VIEWER read-only behavior in backend services.
-- Add audit logging for account, membership, profile, and expense changes.
 
 ## Priority 2: Database And Migration Health
 

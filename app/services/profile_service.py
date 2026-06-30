@@ -10,6 +10,7 @@ from ..db.models.financial_profile import FinancialProfile
 from ..domain.memberships.membership import MembershipRole
 from ..errors.errors import AccountDoesNotExistError, ProfileUpdateForbiddenError
 from ..schemas.financial_profile import FinancialProfileUpdate
+from .audit_log_service import financial_profile_snapshot, record_audit_log
 from .authorization_service import require_account_member
 
 
@@ -46,6 +47,8 @@ class ProfileService:
             p_id = profile_db.id if profile_db else None
             raise ProfileUpdateForbiddenError(financial_profile_id=p_id, user_id=user_id, account_id=account_id)
 
+        before = financial_profile_snapshot(profile_db) if profile_db else None
+
         # 4. Upsert Logic: Create if missing
         if profile_db is None:
             profile_db = FinancialProfile(account_id=account_id)
@@ -55,5 +58,17 @@ class ProfileService:
         update_dict = data.model_dump(exclude_unset=True)
         for key, value in update_dict.items():
             setattr(profile_db, key, value)
+
+        session.flush()
+        record_audit_log(
+            session=session,
+            actor_user_id=user_id,
+            account_id=account_id,
+            action="financial_profile.updated",
+            entity_type="financial_profile",
+            entity_id=profile_db.id,
+            before=before,
+            after=financial_profile_snapshot(profile_db),
+        )
 
         return profile_db
