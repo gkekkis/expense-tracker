@@ -8,6 +8,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session  # noqa: TCH002
 
+from ..api.core.security import hash_password
 from ..db.models.account import Account
 from ..db.models.membership import Membership
 from ..db.models.user import User
@@ -16,7 +17,8 @@ from ..schemas.user import UserCreate  # noqa: TCH001
 
 
 def create_user(session: Session, user_in: UserCreate) -> User:
-    db_user = User(name=user_in.name, email=user_in.email, status=user_in.status)
+    password_hash = hash_password(user_in.password) if user_in.password else None
+    db_user = User(name=user_in.name, email=user_in.email, status=user_in.status, password_hash=password_hash)
 
     session.add(db_user)
     session.flush()
@@ -33,6 +35,10 @@ def get_user_by_id(session: Session, user_id: UUID) -> User:
     if db_user is None:
         raise UserDoesNotExistError(user_id=user_id)
     return db_user
+
+
+def get_user_by_email(session: Session, email: str) -> User | None:
+    return session.scalars(select(User).where(User.email == email)).first()
 
 
 def get_accounts_by_id(session: Session, current_user_id: UUID) -> Sequence[Account]:

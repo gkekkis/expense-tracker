@@ -8,6 +8,7 @@ from fastapi import Depends, FastAPI
 from .api.core.exceptions import register_exception_handlers
 from .api.dependencies import get_current_user_id, get_db
 from .api.v1.accounts import router as accounts_router
+from .api.v1.auth import router as auth_router
 from .api.v1.expenses import router as expenses_router  # noqa: F401
 from .api.v1.financial_profiles import router as financial_profiles_router  # noqa: F401
 from .api.v1.health import router as healthcheck_router  # noqa: F401
@@ -48,6 +49,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Expense Tracker API", lifespan=lifespan)
 
+app.include_router(auth_router, prefix="/api/v1")
 app.include_router(users_router, prefix="/api/v1")
 app.include_router(accounts_router, prefix="/api/v1", dependencies=[Depends(get_current_user_id)])
 app.include_router(expenses_router, prefix="/api/v1", dependencies=[Depends(get_current_user_id)])
