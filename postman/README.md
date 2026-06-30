@@ -9,7 +9,20 @@ This folder contains a Postman collection for manually testing the Expense Track
 
 ## Setup
 
-Start the backend first:
+Apply database migrations before running the collection:
+
+```powershell
+.venv\Scripts\python.exe -m alembic upgrade head
+.venv\Scripts\python.exe -m alembic current
+```
+
+Expected Alembic version:
+
+```text
+f8a1c2b3d4e5 (head)
+```
+
+Then start the backend:
 
 ```powershell
 uvicorn app.main:app --reload --port 8001

@@ -19,11 +19,18 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _has_column(table_name: str, column_name: str) -> bool:
+    inspector = sa.inspect(op.get_bind())
+    return any(column["name"] == column_name for column in inspector.get_columns(table_name))
+
+
 def upgrade() -> None:
     """Upgrade schema."""
-    op.add_column("users", sa.Column("password_hash", sa.String(), nullable=True))
+    if not _has_column("users", "password_hash"):
+        op.add_column("users", sa.Column("password_hash", sa.String(), nullable=True))
 
 
 def downgrade() -> None:
     """Downgrade schema."""
-    op.drop_column("users", "password_hash")
+    if _has_column("users", "password_hash"):
+        op.drop_column("users", "password_hash")
