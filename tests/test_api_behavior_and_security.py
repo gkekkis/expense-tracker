@@ -5,6 +5,7 @@ from conftest import assert_http, seed_account, seed_category, seed_expense, see
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from app.db.models.expense import ExpenseStatus
 from app.db.models.financial_profile import FinancialProfile
 from app.db.models.membership import MembershipRole
 from app.domain.accounts.account import AccountStatus
@@ -19,6 +20,18 @@ if not DATABASE_URL:
 
 engine = create_engine(DATABASE_URL)
 TestingSessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+
+
+def _seed_viewer_expense_context(db_session, *, viewer_is_creator: bool = False):
+    owner = seed_user(db_session)
+    viewer = seed_user(db_session)
+    account = seed_account(db_session, status=AccountStatus.ACTIVE)
+    seed_membership(db_session, user_id=owner.id, account_id=account.id, role=MembershipRole.OWNER)
+    seed_membership(db_session, user_id=viewer.id, account_id=account.id, role=MembershipRole.VIEWER)
+    category = seed_category(db=db_session, account_id=account.id, name="General", emoji="G")
+    creator_id = viewer.id if viewer_is_creator else owner.id
+    expense = seed_expense(db_session, account_id=account.id, created_by_user_id=creator_id, test_category=category)
+    return owner, viewer, account, category, expense
 
 
 def test_accounts_patch_active_owner_can_rename(client, db_session, test_user_id):
@@ -235,6 +248,64 @@ def test_expense_read_rejects_non_member(client, db_session):
     resp = client.get(f"/api/v1/expenses/{bob_expense.id}", params={"current_user_id": str(alice.id)})
 
     assert_http(resp, 403, "USER_NOT_MEMBER_OF_THE_ACCOUNT")
+
+
+def test_viewer_can_read_account_expense(client, db_session):
+    _, viewer, _, _, expense = _seed_viewer_expense_context(db_session)
+
+    resp = client.get(f"/api/v1/expenses/{expense.id}", params={"current_user_id": str(viewer.id)})
+
+    assert_http(resp, 200)
+    assert resp.json()["id"] == str(expense.id)
+
+
+def test_viewer_cannot_create_expense(client, db_session):
+    _, viewer, account, category, _ = _seed_viewer_expense_context(db_session)
+
+    resp = client.post(
+        "/api/v1/expenses/",
+        params={"current_user_id": str(viewer.id)},
+        json={
+            "account_id": str(account.id),
+            "description": "Viewer create attempt",
+            "amount": "12.00",
+            "category_id": str(category.id),
+            "expense_date": "2024-02-10",
+            "currency": "EUR",
+        },
+    )
+
+    assert_http(resp, 403, "ACCOUNT_MUTATION_FORBIDDEN")
+
+
+def test_viewer_cannot_update_own_expense(client, db_session):
+    _, viewer, _, _, expense = _seed_viewer_expense_context(db_session, viewer_is_creator=True)
+
+    resp = client.patch(
+        f"/api/v1/expenses/{expense.id}",
+        params={"current_user_id": str(viewer.id)},
+        json={"description": "Viewer edit attempt"},
+    )
+
+    assert_http(resp, 403, "ACCOUNT_MUTATION_FORBIDDEN")
+
+
+def test_viewer_cannot_delete_own_expense(client, db_session):
+    _, viewer, _, _, expense = _seed_viewer_expense_context(db_session, viewer_is_creator=True)
+
+    resp = client.delete(f"/api/v1/expenses/{expense.id}", params={"current_user_id": str(viewer.id)})
+
+    assert_http(resp, 403, "ACCOUNT_MUTATION_FORBIDDEN")
+
+
+def test_viewer_cannot_approve_pending_expense(client, db_session):
+    _, viewer, _, _, expense = _seed_viewer_expense_context(db_session)
+
+    resp = client.patch(f"/api/v1/expenses/{expense.id}/approve", params={"current_user_id": str(viewer.id)})
+
+    assert_http(resp, 403, "ACCOUNT_MUTATION_FORBIDDEN")
+    db_session.refresh(expense)
+    assert expense.status == ExpenseStatus.PENDING
 
 
 def test_membership_list_only_returns_current_user_account_memberships(client, db_session):

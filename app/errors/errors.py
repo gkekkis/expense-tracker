@@ -44,6 +44,12 @@ class AccountUpdateForbiddenError(ExpenseTrackerProjectError):
         self.account_id = account_id
 
 
+class AccountMutationForbiddenError(ExpenseTrackerProjectError):
+    def __init__(self, user_id: UUID, account_id: UUID):
+        self.user_id = user_id
+        self.account_id = account_id
+
+
 class AccountInactiveError(ExpenseTrackerProjectError):
     def __init__(self, account_id: UUID, operation: Operation):
         self.account_id = account_id

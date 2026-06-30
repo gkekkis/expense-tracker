@@ -13,7 +13,6 @@ from sqlalchemy.orm import Session, selectinload  # noqa: TCH002
 from ..db.models.account import Account
 from ..db.models.category import Category
 from ..db.models.expense import Expense, ExpenseStatus
-from ..db.models.membership import Membership
 from ..db.models.recurring_template import RecurringTemplate
 from ..domain.currencies.currency import Currency
 from ..domain.memberships.membership import MembershipRole
@@ -32,13 +31,13 @@ from ..schemas.expense import (
     ExpenseFilterParams,
 )
 from .accounts.account_service import get_account_by_id
-from .authorization_service import get_account_ids_for_user, require_account_member
+from .authorization_service import get_account_ids_for_user, require_account_member, require_account_writer
 from .responsibility_service import ResponsibilityService
 
 
 def create_expense(session: Session, expense_in: ExpenseCreate, created_by_user_id: UUID | None) -> Expense:
     if created_by_user_id:
-        require_account_member(session=session, account_id=expense_in.account_id, user_id=created_by_user_id)
+        require_account_writer(session=session, account_id=expense_in.account_id, user_id=created_by_user_id)
     else:
         statement = select(1).where(Account.id == expense_in.account_id).limit(1)
         if session.scalar(statement) is None:
@@ -122,7 +121,7 @@ def update_expense_by_id(
 
     # Permission Check: Is user a member? Is user Owner or Creator?
     # (Keeping your existing logic here, but cleaned up slightly)
-    access = require_account_member(session=session, account_id=account_id, user_id=current_user_id)
+    access = require_account_writer(session=session, account_id=account_id, user_id=current_user_id)
     membership = access.membership
 
     is_owner = membership.role == MembershipRole.OWNER
@@ -160,16 +159,8 @@ def delete_expense_by_id(session: Session, expense_id: UUID, current_user_id: UU
     if db_expense is None:
         raise ExpenseDoesNotExistError(expense_id=expense_id)
 
-    require_account_member(session=session, account_id=db_expense.account_id, user_id=current_user_id)
-
-    statement = (
-        select(1).where(
-            Membership.user_id == current_user_id,
-            Membership.account_id == db_expense.account_id,
-            Membership.role == MembershipRole.OWNER,
-        )
-    ).limit(1)
-    current_user_is_owner = session.scalar(statement) is not None
+    access = require_account_writer(session=session, account_id=db_expense.account_id, user_id=current_user_id)
+    current_user_is_owner = access.membership.role == MembershipRole.OWNER
     if all([not db_expense.created_by_user_id == current_user_id, not current_user_is_owner]):
         raise ExpenseDeleteForbiddenError(
             user_id=current_user_id, expense_id=expense_id, account_id=db_expense.account_id
@@ -289,7 +280,7 @@ def confirm_pending_expense(session: Session, expense_id: UUID, current_user_id:
     if not db_expense:
         raise ExpenseDoesNotExistError(expense_id=expense_id)
 
-    require_account_member(session=session, account_id=db_expense.account_id, user_id=current_user_id)
+    require_account_writer(session=session, account_id=db_expense.account_id, user_id=current_user_id)
 
     if db_expense.status == ExpenseStatus.PENDING:
         db_expense.status = ExpenseStatus.COMPLETED
