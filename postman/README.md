@@ -22,6 +22,22 @@ Expected Alembic version:
 f8a1c2b3d4e5 (head)
 ```
 
+Make sure Alembic and Uvicorn are using the same database mode in the same terminal.
+
+For the local development database configured by `TEST_DATABASE_URL`:
+
+```powershell
+$env:DEV = "True"
+$env:TESTING = "False"
+```
+
+For the main local database configured by `DB_NAME` / `DATABASE_URL`:
+
+```powershell
+$env:DEV = "False"
+$env:TESTING = "False"
+```
+
 Then start the backend:
 
 ```powershell
