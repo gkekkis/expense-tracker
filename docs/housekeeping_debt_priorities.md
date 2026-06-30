@@ -37,6 +37,7 @@ Date: 2026-06-29
 - Restricted `X-User-Id` authentication to local prototype and test flows.
 - Added account-scoped read authorization for accounts, expenses, memberships, categories, financial profiles, and budget summaries.
 - Added API regression tests proving non-members cannot read account-owned resources.
+- Restricted global user discovery to local prototype flows and added authenticated exact-email user search.
 
 ## Priority 0: Clean Baseline Before Product Work
 
@@ -49,7 +50,6 @@ Date: 2026-06-29
 ## Priority 1: Security And Data Isolation
 
 - Remove `X-User-Id` fallback before any non-local deployment.
-- Restrict global user discovery with an invite/search flow instead of listing every user.
 - Enforce VIEWER read-only behavior in backend services.
 - Add CORS configuration for the Reflex/frontend app.
 - Add audit logging for account, membership, profile, and expense changes.

@@ -30,6 +30,11 @@ def get_all_users(session: Session) -> Sequence[User]:
     return session.scalars(select(User)).all()
 
 
+def search_users_by_exact_email(session: Session, email: str) -> list[User]:
+    db_user = get_user_by_email(session=session, email=email)
+    return [db_user] if db_user else []
+
+
 def get_user_by_id(session: Session, user_id: UUID) -> User:
     db_user = session.get(User, user_id)
     if db_user is None:

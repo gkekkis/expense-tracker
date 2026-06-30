@@ -418,15 +418,12 @@
           ]
         },
         {
-          "name": "List Users",
+          "name": "Search Member User By Email",
           "request": {
-            "auth": {
-              "type": "noauth"
-            },
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/v1/users/",
+              "raw": "{{base_url}}/api/v1/users/search?email={{member_email}}",
               "host": [
                 "{{base_url}}"
               ],
@@ -434,7 +431,13 @@
                 "api",
                 "v1",
                 "users",
-                ""
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "{{member_email}}"
+                }
               ]
             }
           },
@@ -444,9 +447,44 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Users are listed', function () {",
+                  "pm.test('Member user is found by exact email', function () {",
                   "  pm.response.to.have.status(200);",
-                  "  pm.expect(pm.response.json()).to.be.an('array');",
+                  "  const users = pm.response.json();",
+                  "  pm.expect(users).to.be.an('array').with.lengthOf(1);",
+                  "  pm.expect(users[0].id).to.eql(pm.environment.get('member_user_id'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cannot Read Another User Directly",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/{{viewer_user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{viewer_user_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Direct user read is forbidden for another user', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(pm.response.json().error_code).to.eql('USER_READ_FORBIDDEN');",
                   "});"
                 ]
               }

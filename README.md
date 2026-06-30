@@ -94,7 +94,11 @@ Use the returned token on protected API calls:
 Authorization: Bearer <access_token>
 ```
 
-For local prototype work only, `X-User-Id` can be enabled with `DEV=True`, `TESTING=True`, or `ALLOW_X_USER_ID_AUTH=True`.
+For local prototype work only, `X-User-Id` and the global `GET /api/v1/users/` user picker can be enabled
+with `DEV=True`, `TESTING=True`, or `ALLOW_X_USER_ID_AUTH=True`.
+
+For normal authenticated flows, use `GET /api/v1/auth/me` for the current user and `GET /api/v1/users/search?email=...`
+for exact email lookup before adding a member.
 
 ## Frontend
 
@@ -120,4 +124,5 @@ The test setup drops and recreates the `public` schema in the configured test da
 
 ## Notes
 
-Authentication now supports signed bearer tokens. The `X-User-Id` fallback is only for local prototype and test flows.
+Authentication now supports signed bearer tokens. The `X-User-Id` fallback and global user listing are only for local
+prototype and test flows.

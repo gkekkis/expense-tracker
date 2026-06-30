@@ -214,6 +214,40 @@ def test_account_read_rejects_non_member(client, db_session):
     assert_http(resp, 403, "USER_NOT_MEMBER_OF_THE_ACCOUNT")
 
 
+def test_global_user_list_is_disabled_outside_local_prototype(client, monkeypatch):
+    monkeypatch.setenv("DEV", "False")
+    monkeypatch.setenv("TESTING", "False")
+    monkeypatch.setenv("ALLOW_X_USER_ID_AUTH", "False")
+
+    resp = client.get("/api/v1/users/")
+
+    assert_http(resp, 403, "USER_LIST_FORBIDDEN")
+
+
+def test_user_search_finds_exact_email_for_authenticated_user(client, db_session):
+    current_user = seed_user(db_session)
+    target_user = seed_user(db_session, email="target-user@example.com")
+
+    resp = client.get(
+        "/api/v1/users/search", params={"current_user_id": str(current_user.id), "email": target_user.email}
+    )
+
+    assert_http(resp, 200)
+    assert [user["id"] for user in resp.json()] == [str(target_user.id)]
+
+
+def test_user_read_allows_self_only(client, db_session):
+    alice = seed_user(db_session)
+    bob = seed_user(db_session)
+
+    self_resp = client.get(f"/api/v1/users/{alice.id}", params={"current_user_id": str(alice.id)})
+    other_resp = client.get(f"/api/v1/users/{bob.id}", params={"current_user_id": str(alice.id)})
+
+    assert_http(self_resp, 200)
+    assert self_resp.json()["id"] == str(alice.id)
+    assert_http(other_resp, 403, "USER_READ_FORBIDDEN")
+
+
 def test_expense_list_only_returns_current_user_account_expenses(client, db_session):
     alice = seed_user(db_session)
     bob = seed_user(db_session)

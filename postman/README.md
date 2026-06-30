@@ -60,7 +60,8 @@ Run the collection from top to bottom:
 7. `06 Financial Profile & Summaries`
 
 The first authenticated owner login stores `access_token`, which the collection uses by default.
-Member and viewer requests use their own request-level bearer tokens.
+Member and viewer requests use their own request-level bearer tokens. User lookup uses exact email search instead of
+global user listing.
 
 ## Resetting A Run
 
@@ -86,7 +87,7 @@ Prefer bearer tokens for manual QA because they exercise the real authentication
 The collection covers:
 
 - health check
-- user creation and login
+- user creation, login, current-user lookup, exact email user search, and user-discovery denial
 - account creation, listing, reading, and updating
 - default category lookup
 - membership creation and update

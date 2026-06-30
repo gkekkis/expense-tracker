@@ -26,7 +26,7 @@ def get_db():
         db.close()
 
 
-def _allow_dev_user_header() -> bool:
+def allow_local_prototype_features() -> bool:
     return (
         os.getenv("ALLOW_X_USER_ID_AUTH", "False").lower() == "true"
         or os.getenv("DEV", "False").lower() == "true"
@@ -48,7 +48,7 @@ async def get_current_user_id(
                 headers={"WWW-Authenticate": "Bearer"},
             ) from exc
 
-    if not x_user_id or not _allow_dev_user_header():
+    if not x_user_id or not allow_local_prototype_features():
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Bearer token missing.",
