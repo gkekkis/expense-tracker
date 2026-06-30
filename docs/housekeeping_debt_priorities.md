@@ -33,6 +33,8 @@ Date: 2026-06-29
 - Ran Ruff format/check successfully.
 - Cleaned several encoding artifacts in the active Reflex UI pages.
 - Documented a disposable-database Alembic migration smoke test.
+- Added signed bearer-token authentication baseline with password hashing.
+- Restricted `X-User-Id` authentication to local prototype and test flows.
 
 ## Priority 0: Clean Baseline Before Product Work
 
@@ -44,7 +46,7 @@ Date: 2026-06-29
 
 ## Priority 1: Security And Data Isolation
 
-- Replace `X-User-Id` pseudo-auth with real authentication.
+- Remove `X-User-Id` fallback before any non-local deployment.
 - Add account-scoped authorization helpers and use them consistently.
 - Remove or restrict global list endpoints for accounts, users, memberships, and expenses.
 - Enforce VIEWER read-only behavior in backend services.

@@ -67,7 +67,7 @@ $env:DATABASE_URL = "postgresql+psycopg2://postgres:postgres123@localhost:5432/m
 Expected Alembic version:
 
 ```text
-c4d9f2a1b730 (head)
+f8a1c2b3d4e5 (head)
 ```
 
 Start the API:
@@ -81,6 +81,20 @@ Health check:
 ```text
 GET http://127.0.0.1:8001/api/v1/health/
 ```
+
+Login with email/password:
+
+```text
+POST http://127.0.0.1:8001/api/v1/auth/login
+```
+
+Use the returned token on protected API calls:
+
+```text
+Authorization: Bearer <access_token>
+```
+
+For local prototype work only, `X-User-Id` can be enabled with `DEV=True`, `TESTING=True`, or `ALLOW_X_USER_ID_AUTH=True`.
 
 ## Frontend
 
@@ -106,4 +120,4 @@ The test setup drops and recreates the `public` schema in the configured test da
 
 ## Notes
 
-Authentication is still prototype-level and uses `X-User-Id`. Do not use this as-is for real users.
+Authentication now supports signed bearer tokens. The `X-User-Id` fallback is only for local prototype and test flows.
