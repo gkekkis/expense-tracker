@@ -18,9 +18,7 @@ Db = Annotated[Session, Depends(get_db)]
 
 @router.get("/{account_id}/financial-profile", response_model=FinancialProfileResponse | None)
 def get_financial_profile_endpoint(account_id: UUID, current_user_id: CurrentUser, db: Db):
-    # Membership enforcement is inside ProfileService.update_profile; for reads we only validate account exists.
-    # If you want reads to be membership-protected too, add the same membership check here.
-    return ProfileService.get_profile_by_account_id(session=db, account_id=account_id)
+    return ProfileService.get_profile_by_account_id(session=db, account_id=account_id, current_user_id=current_user_id)
 
 
 @router.patch("/{account_id}/financial-profile", response_model=FinancialProfileResponse)

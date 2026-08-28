@@ -16,6 +16,16 @@ class UserDoesNotExistError(ExpenseTrackerProjectError):
         self.user_id = user_id
 
 
+class UserListForbiddenError(ExpenseTrackerProjectError):
+    pass
+
+
+class UserReadForbiddenError(ExpenseTrackerProjectError):
+    def __init__(self, user_id: UUID, target_user_id: UUID):
+        self.user_id = user_id
+        self.target_user_id = target_user_id
+
+
 class UserNotMemberOfTheAccountError(ExpenseTrackerProjectError):
     def __init__(self, user_id: UUID, account_id: UUID):
         self.user_id = user_id
@@ -39,6 +49,12 @@ class AccountUpdateNoFieldsProvidedError(ExpenseTrackerProjectError):
 
 
 class AccountUpdateForbiddenError(ExpenseTrackerProjectError):
+    def __init__(self, user_id: UUID, account_id: UUID):
+        self.user_id = user_id
+        self.account_id = account_id
+
+
+class AccountMutationForbiddenError(ExpenseTrackerProjectError):
     def __init__(self, user_id: UUID, account_id: UUID):
         self.user_id = user_id
         self.account_id = account_id

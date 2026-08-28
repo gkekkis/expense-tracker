@@ -26,18 +26,13 @@ from ..errors.errors import (
     RecurringTemplateCreateForbiddenError,
     RecurringTemplateDoesNotExistError,
     RecurringTemplateUpdateForbiddenError,
-    UserNotMemberOfTheAccountError,
 )
 from ..schemas.recurring_template import RecurringTemplateCreate, RecurringTemplateUpdate
+from .authorization_service import require_account_member
 
 
 def _get_membership(session: Session, account_id: UUID, user_id: UUID) -> Membership:
-    membership = session.execute(
-        select(Membership).where(Membership.account_id == account_id, Membership.user_id == user_id)
-    ).scalar_one_or_none()
-    if not membership:
-        raise UserNotMemberOfTheAccountError(user_id=user_id, account_id=account_id)
-    return membership
+    return require_account_member(session=session, account_id=account_id, user_id=user_id).membership
 
 
 def _ensure_can_mutate(membership: Membership, tmpl: RecurringTemplate, user_id: UUID) -> None:

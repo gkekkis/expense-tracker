@@ -39,17 +39,74 @@ Run migrations:
 alembic upgrade head
 ```
 
+Migration smoke test against a disposable database:
+
+```powershell
+@'
+from sqlalchemy import create_engine, text
+
+admin_url = "postgresql+psycopg2://postgres:postgres123@localhost:5432/postgres"
+db_name = "my_expense_report_migration_smoke"
+
+engine = create_engine(admin_url, isolation_level="AUTOCOMMIT")
+with engine.connect() as conn:
+    conn.execute(text(f"DROP DATABASE IF EXISTS {db_name} WITH (FORCE)"))
+    conn.execute(text(f"CREATE DATABASE {db_name}"))
+
+print(f"Created clean DB: {db_name}")
+'@ | .venv\Scripts\python.exe -
+
+$env:DEV = "False"
+$env:TESTING = "False"
+$env:DATABASE_URL = "postgresql+psycopg2://postgres:postgres123@localhost:5432/my_expense_report_migration_smoke"
+
+.venv\Scripts\python.exe -m alembic upgrade head
+.venv\Scripts\python.exe -m alembic current
+```
+
+Expected Alembic version:
+
+```text
+f8a1c2b3d4e5 (head)
+```
+
 Start the API:
 
 ```powershell
 uvicorn app.main:app --reload --port 8001
 ```
 
+Configure browser origins that may call the API:
+
+```env
+CORS_ALLOW_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://localhost:8000,http://127.0.0.1:8000
+```
+
+Use only your deployed frontend origin in production.
+
 Health check:
 
 ```text
 GET http://127.0.0.1:8001/api/v1/health/
 ```
+
+Login with email/password:
+
+```text
+POST http://127.0.0.1:8001/api/v1/auth/login
+```
+
+Use the returned token on protected API calls:
+
+```text
+Authorization: Bearer <access_token>
+```
+
+For local prototype work only, `X-User-Id` and the global `GET /api/v1/users/` user picker can be enabled
+with `DEV=True`, `TESTING=True`, or `ALLOW_X_USER_ID_AUTH=True`.
+
+For normal authenticated flows, use `GET /api/v1/auth/me` for the current user and `GET /api/v1/users/search?email=...`
+for exact email lookup before adding a member.
 
 ## Frontend
 
@@ -75,4 +132,5 @@ The test setup drops and recreates the `public` schema in the configured test da
 
 ## Notes
 
-Authentication is still prototype-level and uses `X-User-Id`. Do not use this as-is for real users.
+Authentication now supports signed bearer tokens. The `X-User-Id` fallback and global user listing are only for local
+prototype and test flows.

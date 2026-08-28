@@ -13,7 +13,6 @@ from sqlalchemy.orm import Session, selectinload  # noqa: TCH002
 from ..db.models.account import Account
 from ..db.models.category import Category
 from ..db.models.expense import Expense, ExpenseStatus
-from ..db.models.membership import Membership
 from ..db.models.recurring_template import RecurringTemplate
 from ..domain.currencies.currency import Currency
 from ..domain.memberships.membership import MembershipRole
@@ -26,31 +25,28 @@ from ..errors.errors import (
     ExpenseDoesNotExistError,
     ExpenseUpdateForbiddenError,
     ExpenseUpdateNoFieldsProvidedError,
-    UserNotMemberOfTheAccountError,
 )
 from ..schemas.expense import (
     ExpenseCreate,  # noqa: TCH001
     ExpenseFilterParams,
 )
 from .accounts.account_service import get_account_by_id
+from .audit_log_service import expense_snapshot, record_audit_log
+from .authorization_service import get_account_ids_for_user, require_account_member, require_account_writer
 from .responsibility_service import ResponsibilityService
 
 
 def create_expense(session: Session, expense_in: ExpenseCreate, created_by_user_id: UUID | None) -> Expense:
-    # 1. Validation
-    statement = select(1).where(Account.id == expense_in.account_id).limit(1)
-    if session.scalar(statement) is None:
-        raise AccountDoesNotExistError(account_id=expense_in.account_id)
-
     if created_by_user_id:
-        membership = session.execute(
-            select(Membership).where(
-                Membership.user_id == created_by_user_id, Membership.account_id == expense_in.account_id
-            )
-        ).scalar_one_or_none()
+        require_account_writer(session=session, account_id=expense_in.account_id, user_id=created_by_user_id)
+    else:
+        statement = select(1).where(Account.id == expense_in.account_id).limit(1)
+        if session.scalar(statement) is None:
+            raise AccountDoesNotExistError(account_id=expense_in.account_id)
 
-        if not membership:
-            raise UserNotMemberOfTheAccountError(user_id=created_by_user_id, account_id=expense_in.account_id)
+    category = session.get(Category, expense_in.category_id)
+    if not category or category.account_id != expense_in.account_id:
+        raise CategoryNotFoundError(category_id=expense_in.category_id)
 
     calculated_user_share = ResponsibilityService().calculate_user_share(
         session=session,
@@ -76,20 +72,38 @@ def create_expense(session: Session, expense_in: ExpenseCreate, created_by_user_
 
     session.add(db_expense)
     session.flush()
+    record_audit_log(
+        session=session,
+        actor_user_id=created_by_user_id,
+        account_id=db_expense.account_id,
+        action="expense.created",
+        entity_type="expense",
+        entity_id=db_expense.id,
+        after=expense_snapshot(db_expense),
+    )
     return db_expense
 
 
-def get_all_expenses(session: Session) -> Sequence[Expense]:
-    return session.scalars(select(Expense).options(selectinload(Expense.category))).all()
+def get_all_expenses(session: Session, current_user_id: UUID) -> Sequence[Expense]:
+    user_account_ids = get_account_ids_for_user(session=session, user_id=current_user_id)
+    if not user_account_ids:
+        return []
+    return session.scalars(
+        select(Expense)
+        .options(selectinload(Expense.category))
+        .where(Expense.account_id.in_(user_account_ids))
+        .order_by(Expense.expense_date.desc())
+    ).all()
 
 
-def get_expense_by_id(session: Session, expense_id: UUID) -> Expense:
+def get_expense_by_id(session: Session, expense_id: UUID, current_user_id: UUID) -> Expense:
     # Ensure category is available for read models
     db_expense = session.execute(
         select(Expense).options(selectinload(Expense.category)).where(Expense.id == expense_id)
     ).scalar_one_or_none()
     if db_expense is None:
         raise ExpenseDoesNotExistError(expense_id=expense_id)
+    require_account_member(session=session, account_id=db_expense.account_id, user_id=current_user_id)
     return db_expense
 
 
@@ -117,12 +131,8 @@ def update_expense_by_id(
 
     # Permission Check: Is user a member? Is user Owner or Creator?
     # (Keeping your existing logic here, but cleaned up slightly)
-    membership = session.execute(
-        select(Membership).where(Membership.user_id == current_user_id, Membership.account_id == account_id)
-    ).scalar_one_or_none()
-
-    if not membership:
-        raise UserNotMemberOfTheAccountError(user_id=current_user_id, account_id=account_id)
+    access = require_account_writer(session=session, account_id=account_id, user_id=current_user_id)
+    membership = access.membership
 
     is_owner = membership.role == MembershipRole.OWNER
     is_creator = db_expense.created_by_user_id == current_user_id
@@ -133,6 +143,8 @@ def update_expense_by_id(
     # Check if we actually have something to update
     if all(v is None for v in [description, amount, category_id, expense_date, currency]):
         raise ExpenseUpdateNoFieldsProvidedError(expense_id=expense_id)
+
+    before = expense_snapshot(db_expense)
 
     if category_id is not None:
         category = session.get(Category, category_id)
@@ -151,6 +163,16 @@ def update_expense_by_id(
         db_expense.currency = currency
 
     session.flush()
+    record_audit_log(
+        session=session,
+        actor_user_id=current_user_id,
+        account_id=account_id,
+        action="expense.updated",
+        entity_type="expense",
+        entity_id=expense_id,
+        before=before,
+        after=expense_snapshot(db_expense),
+    )
     return db_expense
 
 
@@ -159,55 +181,36 @@ def delete_expense_by_id(session: Session, expense_id: UUID, current_user_id: UU
     if db_expense is None:
         raise ExpenseDoesNotExistError(expense_id=expense_id)
 
-    # Check if user is a member of the account
-    statement = (
-        select(1)
-        .where(Membership.user_id == current_user_id)
-        .where(Membership.account_id == db_expense.account_id)
-        .limit(1)
-    )
-
-    is_member = session.scalar(statement) is not None
-
-    if not is_member:
-        raise UserNotMemberOfTheAccountError(user_id=current_user_id, account_id=db_expense.account_id)
-
-    statement = (
-        select(1).where(
-            Membership.user_id == current_user_id,
-            Membership.account_id == db_expense.account_id,
-            Membership.role == MembershipRole.OWNER,
-        )
-    ).limit(1)
-    current_user_is_owner = session.scalar(statement) is not None
+    access = require_account_writer(session=session, account_id=db_expense.account_id, user_id=current_user_id)
+    current_user_is_owner = access.membership.role == MembershipRole.OWNER
     if all([not db_expense.created_by_user_id == current_user_id, not current_user_is_owner]):
         raise ExpenseDeleteForbiddenError(
             user_id=current_user_id, expense_id=expense_id, account_id=db_expense.account_id
         )
 
+    before = expense_snapshot(db_expense)
+
     session.delete(db_expense)
     session.flush()
+    record_audit_log(
+        session=session,
+        actor_user_id=current_user_id,
+        account_id=before["account_id"],
+        action="expense.deleted",
+        entity_type="expense",
+        entity_id=expense_id,
+        before=before,
+    )
     return None
 
 
 def get_filtered_expenses(session: Session, params: ExpenseFilterParams, current_user_id: UUID):
     # 1. Reuse existing account logic
-    db_account = get_account_by_id(session=session, account_id=params.account_id)
+    db_account = get_account_by_id(session=session, account_id=params.account_id, current_user_id=current_user_id)
 
     ensure_account_mutable(
         account_id=params.account_id, account_status=db_account.status, operation=Operation.EXPENSE_READ
     )
-
-    # 2. Membership Check
-    is_a_member = (
-        session.scalar(
-            select(1).where(Membership.account_id == params.account_id, Membership.user_id == current_user_id).limit(1)
-        )
-        is not None
-    )
-
-    if not is_a_member:
-        raise UserNotMemberOfTheAccountError(user_id=current_user_id, account_id=params.account_id)
 
     # 3. Base Query
     query = select(Expense).options(selectinload(Expense.category)).where(Expense.account_id == params.account_id)
@@ -310,14 +313,23 @@ def confirm_pending_expense(session: Session, expense_id: UUID, current_user_id:
     if not db_expense:
         raise ExpenseDoesNotExistError(expense_id=expense_id)
 
-    membership_exists = session.scalar(
-        select(1).where(Membership.account_id == db_expense.account_id, Membership.user_id == current_user_id).limit(1)
-    )
-    if not membership_exists:
-        raise UserNotMemberOfTheAccountError(user_id=current_user_id, account_id=db_expense.account_id)
+    require_account_writer(session=session, account_id=db_expense.account_id, user_id=current_user_id)
 
     if db_expense.status == ExpenseStatus.PENDING:
+        before = expense_snapshot(db_expense)
         db_expense.status = ExpenseStatus.COMPLETED
+        session.flush()
+        record_audit_log(
+            session=session,
+            actor_user_id=current_user_id,
+            account_id=db_expense.account_id,
+            action="expense.approved",
+            entity_type="expense",
+            entity_id=expense_id,
+            before=before,
+            after=expense_snapshot(db_expense),
+        )
+        return db_expense
 
     session.flush()
     return db_expense
@@ -330,11 +342,7 @@ def get_recurring_templates_by_account(
     if not db_account:
         raise AccountDoesNotExistError(account_id=account_id)
 
-    membership_exists = session.scalar(
-        select(1).where(Membership.account_id == account_id, Membership.user_id == current_user_id).limit(1)
-    )
-    if not membership_exists:
-        raise UserNotMemberOfTheAccountError(user_id=current_user_id, account_id=account_id)
+    require_account_member(session=session, account_id=account_id, user_id=current_user_id)
 
     query = select(RecurringTemplate).where(RecurringTemplate.account_id == account_id)
     return session.scalars(query).all()

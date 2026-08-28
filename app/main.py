@@ -4,10 +4,13 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
+from .api.core.cors import get_cors_allow_origins
 from .api.core.exceptions import register_exception_handlers
 from .api.dependencies import get_current_user_id, get_db
 from .api.v1.accounts import router as accounts_router
+from .api.v1.auth import router as auth_router
 from .api.v1.expenses import router as expenses_router  # noqa: F401
 from .api.v1.financial_profiles import router as financial_profiles_router  # noqa: F401
 from .api.v1.health import router as healthcheck_router  # noqa: F401
@@ -48,6 +51,17 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Expense Tracker API", lifespan=lifespan)
 
+cors_allow_origins = get_cors_allow_origins()
+if cors_allow_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_allow_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "X-User-Id"],
+    )
+
+app.include_router(auth_router, prefix="/api/v1")
 app.include_router(users_router, prefix="/api/v1")
 app.include_router(accounts_router, prefix="/api/v1", dependencies=[Depends(get_current_user_id)])
 app.include_router(expenses_router, prefix="/api/v1", dependencies=[Depends(get_current_user_id)])

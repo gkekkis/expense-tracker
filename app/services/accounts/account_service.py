@@ -18,13 +18,10 @@ from ...domain.expenses.category_defaults import CATEGORY_EMOJI_MAP
 from ...domain.expenses.expense import ExpenseCategory
 from ...domain.operations import Operation
 from ...domain.policies.account_state import ensure_account_mutable, ensure_inactive_account_reactivation_only
-from ...errors.errors import (
-    AccountDoesNotExistError,
-    AccountUpdateForbiddenError,
-    AccountUpdateNoFieldsProvidedError,
-    UserNotMemberOfTheAccountError,
-)
+from ...errors.errors import AccountDoesNotExistError, AccountUpdateForbiddenError, AccountUpdateNoFieldsProvidedError
 from ...schemas.account import AccountCreate
+from ..audit_log_service import account_snapshot, membership_snapshot, record_audit_log
+from ..authorization_service import require_account_member
 from .onboarding import process_new_account_onboarding
 
 logger = logging.getLogger(__name__)
@@ -45,36 +42,43 @@ def create_account(session: Session, account_in: AccountCreate, current_user_id:
     db_account = process_new_account_onboarding(session=session, account=db_account, category_ids=category_ids)
     session.flush()
 
+    record_audit_log(
+        session=session,
+        actor_user_id=current_user_id,
+        account_id=db_account.id,
+        action="account.created",
+        entity_type="account",
+        entity_id=db_account.id,
+        after=account_snapshot(db_account),
+    )
+    record_audit_log(
+        session=session,
+        actor_user_id=current_user_id,
+        account_id=db_account.id,
+        action="membership.created",
+        entity_type="membership",
+        entity_id=owner_membership.id,
+        after=membership_snapshot(owner_membership),
+    )
+
     return db_account
 
 
-def get_all_accounts(session: Session) -> Sequence[Account]:
-    return session.scalars(select(Account)).all()
+def get_all_accounts(session: Session, current_user_id: UUID) -> Sequence[Account]:
+    return session.scalars(
+        select(Account)
+        .join(Membership, Membership.account_id == Account.id)
+        .where(Membership.user_id == current_user_id)
+        .order_by(Account.created_at.desc())
+    ).all()
 
 
-def get_account_by_id(session: Session, account_id: UUID) -> Account:
-    db_account = session.get(Account, account_id)
-    if db_account is None:
-        raise AccountDoesNotExistError(account_id=account_id)
-    return db_account
+def get_account_by_id(session: Session, account_id: UUID, current_user_id: UUID) -> Account:
+    return require_account_member(session=session, account_id=account_id, user_id=current_user_id).account
 
 
 def get_account_memberships_by_id(session: Session, account_id: UUID, current_user_id: UUID) -> Sequence[Membership]:
-    db_account = session.get(Account, account_id)
-    # Check if account exists
-    if db_account is None:
-        raise AccountDoesNotExistError(account_id=account_id)
-
-    # Check if current user is a member of the account
-    is_a_member = (
-        session.scalar(
-            select(1).where(Membership.account_id == account_id, Membership.user_id == current_user_id).limit(1)
-        )
-        is not None
-    )
-
-    if not is_a_member:
-        raise UserNotMemberOfTheAccountError(user_id=current_user_id, account_id=account_id)
+    require_account_member(session=session, account_id=account_id, user_id=current_user_id)
 
     account_memberships = session.scalars(select(Membership).where(Membership.account_id == account_id)).all()
 
@@ -82,24 +86,11 @@ def get_account_memberships_by_id(session: Session, account_id: UUID, current_us
 
 
 def get_account_expenses_by_id(session: Session, account_id: UUID, current_user_id: UUID) -> Sequence[Expense]:
-    db_account = session.get(Account, account_id)
-    # Check if account exists
-    if db_account is None:
-        raise AccountDoesNotExistError(account_id=account_id)
+    access = require_account_member(session=session, account_id=account_id, user_id=current_user_id)
+    db_account = access.account
 
     # Check if account is ACTIVE and disallow mutations when INACTIVE
     ensure_account_mutable(account_id=account_id, account_status=db_account.status, operation=Operation.EXPENSE_READ)
-
-    # Check if current user is a member of the account
-    is_a_member = (
-        session.scalar(
-            select(1).where(Membership.account_id == account_id, Membership.user_id == current_user_id).limit(1)
-        )
-        is not None
-    )
-
-    if not is_a_member:
-        raise UserNotMemberOfTheAccountError(user_id=current_user_id, account_id=account_id)
 
     account_expenses = session.scalars(
         select(Expense)
@@ -128,19 +119,11 @@ def update_account_by_id(
     if all(value is None for value in [name, status]):
         raise AccountUpdateNoFieldsProvidedError(account_id=account_id)
 
-    # Check if user is the OWNER of the account
-    statement = (
-        select(1).where(
-            Membership.user_id == current_user_id,
-            Membership.account_id == account_id,
-            Membership.role == MembershipRole.OWNER,
-        )
-    ).limit(1)
-
-    # If not OWNER raise 403
-    current_user_is_owner = session.scalar(statement) is not None
-    if not current_user_is_owner:
+    access = require_account_member(session=session, account_id=account_id, user_id=current_user_id)
+    if access.membership.role != MembershipRole.OWNER:
         raise AccountUpdateForbiddenError(user_id=current_user_id, account_id=account_id)
+
+    before = account_snapshot(db_account)
 
     # Apply reactivation excpetion for OWNER
     if db_account.status == AccountStatus.INACTIVE and status == AccountStatus.ACTIVE:
@@ -153,6 +136,16 @@ def update_account_by_id(
         db_account.status = status
 
         session.flush()
+        record_audit_log(
+            session=session,
+            actor_user_id=current_user_id,
+            account_id=account_id,
+            action="account.updated",
+            entity_type="account",
+            entity_id=account_id,
+            before=before,
+            after=account_snapshot(db_account),
+        )
 
         return db_account
 
@@ -166,6 +159,16 @@ def update_account_by_id(
         db_account.status = status
 
     session.flush()
+    record_audit_log(
+        session=session,
+        actor_user_id=current_user_id,
+        account_id=account_id,
+        action="account.updated",
+        entity_type="account",
+        entity_id=account_id,
+        before=before,
+        after=account_snapshot(db_account),
+    )
 
     return db_account
 

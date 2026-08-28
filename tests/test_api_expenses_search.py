@@ -1,6 +1,7 @@
 from datetime import date
 from uuid import uuid4
 
+from conftest import seed_currency_rates
 from httpx import AsyncClient
 
 from app.db.models.expense import Expense
@@ -93,6 +94,8 @@ def test_search_expenses_prefix_matching(client, db_session, test_account, test_
 
 def test_currency_normalization(client, db_session, test_account, test_category):
     """Test that total_amount is correctly converted to target_currency"""
+    seed_currency_rates(db_session)
+
     # MUST BE .id - otherwise the API receives a Python object instead of a UUID string
     account_id = test_account.id
 
@@ -117,7 +120,7 @@ def test_currency_normalization(client, db_session, test_account, test_category)
     data = response.json()
 
     # Assertions
-    assert data["total_amount"] != 100.0  # Should be converted to EUR
+    assert data["total_amount"] == 92.59  # 100 USD / 1.08, with EUR as the base rate.
     assert data["items"][0]["currency"] == "USD"  # Original currency preserved
     assert data["total_amount_formatted"].startswith("€")
 

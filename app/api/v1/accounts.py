@@ -39,14 +39,14 @@ def create_account_endpoint(account_in: AccountCreate, current_user_id: CurrentU
 
 
 @router.get("/", response_model=list[AccountRead])
-def get_all_accounts_endpoint(db: Db) -> list[AccountRead]:
-    db_accounts = get_all_accounts(session=db)
+def get_all_accounts_endpoint(current_user_id: CurrentUser, db: Db) -> list[AccountRead]:
+    db_accounts = get_all_accounts(session=db, current_user_id=current_user_id)
     return db_accounts
 
 
 @router.get("/{account_id}", response_model=AccountRead)
-def get_account_by_id_endpoint(account_id: UUID, db: Db) -> AccountRead:
-    db_account = get_account_by_id(session=db, account_id=account_id)
+def get_account_by_id_endpoint(account_id: UUID, current_user_id: CurrentUser, db: Db) -> AccountRead:
+    db_account = get_account_by_id(session=db, account_id=account_id, current_user_id=current_user_id)
     return db_account
 
 

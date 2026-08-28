@@ -28,6 +28,8 @@ from ..errors.errors import (
     MembershipUpdateNoFieldsProvidedError,
 )
 from ..schemas.membership import MembershipCreate  # noqa: TCH001
+from .audit_log_service import membership_snapshot, record_audit_log
+from .authorization_service import get_account_ids_for_user, require_account_member
 
 
 def create_membership(session: Session, membership: MembershipCreate, current_user_id: UUID) -> Membership:
@@ -75,6 +77,15 @@ def create_membership(session: Session, membership: MembershipCreate, current_us
 
         session.add(db_membership)
         session.flush()
+        record_audit_log(
+            session=session,
+            actor_user_id=current_user_id,
+            account_id=db_membership.account_id,
+            action="membership.created",
+            entity_type="membership",
+            entity_id=db_membership.id,
+            after=membership_snapshot(db_membership),
+        )
     except IntegrityError as e:
         session.rollback()
         raise MembershipAlreadyExistError(user_id=membership.user_id, account_id=membership.account_id) from e
@@ -82,14 +93,18 @@ def create_membership(session: Session, membership: MembershipCreate, current_us
     return db_membership
 
 
-def get_all_memberships(session: Session) -> Sequence[Membership]:
-    return session.scalars(select(Membership)).all()
+def get_all_memberships(session: Session, current_user_id: UUID) -> Sequence[Membership]:
+    account_ids = get_account_ids_for_user(session=session, user_id=current_user_id)
+    if not account_ids:
+        return []
+    return session.scalars(select(Membership).where(Membership.account_id.in_(account_ids))).all()
 
 
-def get_membership_by_id(session: Session, membership_id: UUID) -> Membership:
+def get_membership_by_id(session: Session, membership_id: UUID, current_user_id: UUID) -> Membership:
     db_membership = session.get(Membership, membership_id)
     if db_membership is None:
         raise MembershipDoesNotExistError(membership_id=membership_id)
+    require_account_member(session=session, account_id=db_membership.account_id, user_id=current_user_id)
     return db_membership
 
 
@@ -132,7 +147,9 @@ def update_membership_by_id(
             user_id=current_user_id, membership_id=membership_id, account_id=account_id
         )
 
-    # Add demotion guard to avoid PATCH an OWNER → MEMBER and end up with 0 owners
+    # Add demotion guard to avoid PATCH an OWNER to MEMBER and end up with 0 owners
+    before = membership_snapshot(db_membership)
+
     owners_count = session.scalar(
         select(func.count(Membership.user_id.distinct())).where(
             Membership.role == MembershipRole.OWNER, Membership.account_id == account_id
@@ -157,6 +174,16 @@ def update_membership_by_id(
         db_membership.default_contribution_share = default_contribution_share
 
     session.flush()
+    record_audit_log(
+        session=session,
+        actor_user_id=current_user_id,
+        account_id=account_id,
+        action="membership.updated",
+        entity_type="membership",
+        entity_id=membership_id,
+        before=before,
+        after=membership_snapshot(db_membership),
+    )
 
     return db_membership
 
@@ -204,9 +231,20 @@ def delete_membership_by_id(session: Session, membership_id: UUID, current_user_
             user_id=current_user_id, membership_id=membership_id, account_id=account_id
         )
 
+    before = membership_snapshot(db_membership)
+
     # Delete membership
     session.delete(db_membership)
 
     session.flush()
+    record_audit_log(
+        session=session,
+        actor_user_id=current_user_id,
+        account_id=account_id,
+        action="membership.deleted",
+        entity_type="membership",
+        entity_id=membership_id,
+        before=before,
+    )
 
     return None

@@ -7,18 +7,25 @@ from sqlalchemy.orm import Session
 
 from ..db.models.account import Account
 from ..db.models.financial_profile import FinancialProfile
-from ..db.models.membership import Membership, MembershipRole
-from ..errors.errors import AccountDoesNotExistError, ProfileUpdateForbiddenError, UserNotMemberOfTheAccountError
+from ..domain.memberships.membership import MembershipRole
+from ..errors.errors import AccountDoesNotExistError, ProfileUpdateForbiddenError
 from ..schemas.financial_profile import FinancialProfileUpdate
+from .audit_log_service import financial_profile_snapshot, record_audit_log
+from .authorization_service import require_account_member
 
 
 class ProfileService:
     @staticmethod
-    def get_profile_by_account_id(session: Session, account_id: UUID) -> FinancialProfile | None:
+    def get_profile_by_account_id(
+        session: Session, account_id: UUID, current_user_id: UUID | None = None
+    ) -> FinancialProfile | None:
         # Check if account exists first
         statement = select(1).where(Account.id == account_id).limit(1)
         if session.scalar(statement) is None:
             raise AccountDoesNotExistError(account_id=account_id)
+
+        if current_user_id is not None:
+            require_account_member(session=session, account_id=account_id, user_id=current_user_id)
 
         # Use .scalar_one_or_none() to get the object directly, not an iterator
         statement = select(FinancialProfile).where(FinancialProfile.account_id == account_id)
@@ -28,12 +35,7 @@ class ProfileService:
         self, session: Session, account_id: UUID, user_id: UUID, data: FinancialProfileUpdate
     ) -> FinancialProfile:
         # 1. Fetch membership to check permissions
-        membership = session.execute(
-            select(Membership).where(Membership.user_id == user_id, Membership.account_id == account_id)
-        ).scalar_one_or_none()
-
-        if not membership:
-            raise UserNotMemberOfTheAccountError(user_id=user_id, account_id=account_id)
+        membership = require_account_member(session=session, account_id=account_id, user_id=user_id).membership
 
         # 2. Fetch the profile
         profile_db = self.get_profile_by_account_id(session=session, account_id=account_id)
@@ -45,6 +47,8 @@ class ProfileService:
             p_id = profile_db.id if profile_db else None
             raise ProfileUpdateForbiddenError(financial_profile_id=p_id, user_id=user_id, account_id=account_id)
 
+        before = financial_profile_snapshot(profile_db) if profile_db else None
+
         # 4. Upsert Logic: Create if missing
         if profile_db is None:
             profile_db = FinancialProfile(account_id=account_id)
@@ -54,5 +58,17 @@ class ProfileService:
         update_dict = data.model_dump(exclude_unset=True)
         for key, value in update_dict.items():
             setattr(profile_db, key, value)
+
+        session.flush()
+        record_audit_log(
+            session=session,
+            actor_user_id=user_id,
+            account_id=account_id,
+            action="financial_profile.updated",
+            entity_type="financial_profile",
+            entity_id=profile_db.id,
+            before=before,
+            after=financial_profile_snapshot(profile_db),
+        )
 
         return profile_db

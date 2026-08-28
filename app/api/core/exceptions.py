@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from ...errors.errors import (
     AccountDoesNotExistError,
     AccountInactiveError,
+    AccountMutationForbiddenError,
     AccountUpdateForbiddenError,
     AccountUpdateNoFieldsProvidedError,
     CategoryNotFoundError,
@@ -29,7 +30,9 @@ from ...errors.errors import (
     RecurringTemplateUpdateForbiddenError,
     UserDoesNotExistError,
     UserHasNoAccountsError,
+    UserListForbiddenError,
     UserNotMemberOfTheAccountError,
+    UserReadForbiddenError,
 )
 
 
@@ -42,6 +45,28 @@ def register_exception_handlers(app: FastAPI):
             content={
                 "error_code": "USER_NOT_FOUND",
                 "detail": f"User with id `{exc.user_id}` does not exist.",
+                "path": request.url.path,
+            },
+        )
+
+    @app.exception_handler(UserListForbiddenError)
+    async def user_list_forbidden_handler(request: Request, exc: UserListForbiddenError) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={
+                "error_code": "USER_LIST_FORBIDDEN",
+                "detail": "Global user listing is only available for local prototype flows.",
+                "path": request.url.path,
+            },
+        )
+
+    @app.exception_handler(UserReadForbiddenError)
+    async def user_read_forbidden_handler(request: Request, exc: UserReadForbiddenError) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={
+                "error_code": "USER_READ_FORBIDDEN",
+                "detail": f"User with id `{exc.user_id}` is not authorized to read user `{exc.target_user_id}`.",
                 "path": request.url.path,
             },
         )
@@ -114,6 +139,18 @@ def register_exception_handlers(app: FastAPI):
             content={
                 "error_code": "ACCOUNT_UPDATE_FORBIDDEN",
                 "detail": f"User with id `{exc.user_id}` is not authorized to update account"
+                f" with id `{exc.account_id}`.",
+                "path": request.url.path,
+            },
+        )
+
+    @app.exception_handler(AccountMutationForbiddenError)
+    async def account_mutation_forbidden_handler(request: Request, exc: AccountMutationForbiddenError) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={
+                "error_code": "ACCOUNT_MUTATION_FORBIDDEN",
+                "detail": f"User with id `{exc.user_id}` is not authorized to mutate account"
                 f" with id `{exc.account_id}`.",
                 "path": request.url.path,
             },

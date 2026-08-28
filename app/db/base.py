@@ -2,6 +2,7 @@ from sqlalchemy import MetaData  # noqa: F401
 
 from .declarative_base import Base
 from .models.account import Account  # noqa: F401
+from .models.audit_log import AuditLog  # noqa: F401
 from .models.category import Category  # noqa: F401
 from .models.currency import CurrencyRate  # noqa: F401
 from .models.expense import Expense  # noqa: F401
