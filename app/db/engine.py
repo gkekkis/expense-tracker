@@ -40,9 +40,9 @@ if missing_vars:
 is_dev = os.getenv("DEV", "False").lower() == "true"
 is_test = os.getenv("TESTING", "False").lower() == "true"
 
-assert not (
-    is_dev and is_test
-), f"DEV and TESTING flags must not be both `True`.\nDEV: `{is_dev}`\tTESTING: `{is_test}`"
+assert not (is_dev and is_test), (
+    f"DEV and TESTING flags must not be both `True`.\nDEV: `{is_dev}`\tTESTING: `{is_test}`"
+)
 
 if is_dev:
     DATABASE_URL = os.getenv("TEST_DATABASE_URL")
