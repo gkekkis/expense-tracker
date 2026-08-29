@@ -27,5 +27,5 @@ class User:
         self.email: Optional[str] = email
 
     def __repr__(self) -> str:
-        details = f"<id: {self.id}, name: {self.name}, " f"status: {self.status}, email: {self.email}>"
+        details = f"<id: {self.id}, name: {self.name}, status: {self.status}, email: {self.email}>"
         return details

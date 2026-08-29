@@ -37,9 +37,7 @@ If your Reflex version expects a config file, create `rxconfig.py`:
 ```python
 import reflex as rx
 
-config = rx.Config(
-    app_name="expense_ui",
-)
+config = rx.Config(app_name="expense_ui")
 ```
 
 ## Pages
