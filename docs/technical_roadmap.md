@@ -1,505 +1,307 @@
 # Technical Roadmap
 
-Date: 2026-06-29
+Date: 2026-08-29
 
-## Current Technical Baseline
+Status: Authoritative technical direction supporting `docs/updated_product_roadmap.md`.
+
+## Current Baseline
 
 The repository is a Python modular monolith with:
 
-- FastAPI backend.
-- SQLAlchemy models and services.
-- Alembic migrations.
-- Postgres database.
-- Pydantic 2 schemas.
-- APScheduler background scheduling.
-- Reflex frontend prototype.
-- pytest test suite using a Postgres test database.
+- FastAPI, Pydantic 2, SQLAlchemy, PostgreSQL, and Alembic;
+- APScheduler for current scheduled work;
+- a tracked Reflex 0.8 prototype UI;
+- signed bearer-token authentication, account-scoped authorization helpers, and audit logging;
+- a tracked backend Dockerfile;
+- GitHub Actions jobs for Ruff, pytest, and migration smoke testing;
+- a PostgreSQL-backed pytest suite;
+- a manually verified Azure development backend foundation: Azure Container Registry, Container Apps and Log Analytics, PostgreSQL Flexible Server, Key Vault, a user-assigned managed identity, explicit Alembic migration execution, and an HTTPS FastAPI health check.
 
-The current state is useful but not yet clean enough for sustained product development.
+Verification on 2026-08-29: `uv run pytest -q` completed with 50 passing tests.
 
-## Current Critical Issues
+The current backend supports users, accounts, memberships, expenses, categories, recurring templates, currency normalization, financial profiles, and budget summaries. It does not yet support trustworthy safe-to-spend, income streams, tax reserves, runway, insights, opportunities, or edition-aware workspaces.
 
-Highest-priority findings:
+## Immediate Constraints
 
-- The active Reflex UI is untracked while the old UI path is tracked as deleted.
-- Key dependency/config files are ignored.
-- `requirements.txt` does not describe the real runtime environment.
-- `Dockerfile` is empty.
-- Tests currently fail in recurring scheduling.
-- Account creation does not create an owner membership.
-- Account onboarding seeds recurring templates with emoji strings where category UUIDs are expected.
-- Some search and summary filters are accepted by schemas but ignored in services.
-- Header-only `X-User-Id` auth is unsafe.
-- Several global list/read endpoints are too permissive.
-- Financial profile schema includes fields not persisted in the DB model.
-- The frontend is a temporary dashboard, not yet the product UX.
+- The Reflex UI still uses the local-only `X-User-Id` prototype path instead of the bearer-token API.
+- UI state is concentrated in one large `AppState`, with one global loading flag and untyped dictionary payloads.
+- The current Overview page is a temporary dashboard and the budget summary is not safe-to-spend.
+- The existing Dockerfile packages only FastAPI; Reflex production export and hosting are not configured.
+- CI validates code and migrations but does not deploy an environment or run browser smoke tests.
+- The Azure backend foundation is configured manually rather than as infrastructure as code. A repeatable deployment workflow, backup/restore exercise, and rollback procedure are still absent from the repository.
+- APScheduler currently runs inside the FastAPI web process. With scale-to-zero, scheduled work is not dependable; retain one API replica at most for this development spike and do not rely on scheduled processing until it is moved to an appropriate worker/job design.
+- VIEWER write protection and the remaining authorization matrix must be verified before inviting external testers.
 
 ## Technical Principles
 
-Use a modular monolith until the product validates.
-
-Prefer:
-
-- Clear domain boundaries.
-- Strong tests.
-- Explicit authorization.
-- Background jobs with auditability.
-- Structured data models.
-- Reproducible local setup.
-- Explainable AI workflows.
+- Keep a modular monolith until validated load or ownership boundaries require extraction.
+- Keep backend APIs, authorization, and financial calculations authoritative.
+- Prefer explicit domain modules and typed contracts over generic framework abstractions.
+- Make financial and eligibility results reproducible, explainable, and testable.
+- Keep Personal and Professional in one platform without scattering edition checks through the codebase.
+- Use managed services where they remove meaningful solo-maintainer operational work.
+- Deliver small vertical slices that remain deployable.
+- Do not add Redis, queues, object storage, OCR, or agent orchestration before the active phase needs them.
 
-Avoid for now:
+## Platform Domain Direction
 
-- Premature microservices.
-- Complex agent orchestration before basic workflows are stable.
-- Bank aggregation before CSV/manual validation.
-- Unbounded autonomous actions.
-
-## Target Architecture
+The long-term domain separates four concepts:
 
-## Backend Modules
+- **Identity:** the authenticated person.
+- **Workspace:** an account-scoped financial context with members and roles.
+- **Edition:** Personal or Professional applicability.
+- **Entitlement:** tier, jurisdiction, rollout, and role-based access to a capability.
 
-Identity and access:
+The backend should eventually resolve named capabilities, for example:
 
-- Users.
-- Authentication.
-- Sessions/tokens.
-- Roles and permissions.
-- Audit logs.
-
-Accounts and memberships:
+- `transactions.manage`;
+- `members.manage`;
+- `planning.professional`;
+- `planning.personal`;
+- `opportunities.personal`;
+- `opportunities.professional`;
+- `eligibility.automated`.
 
-- Personal accounts.
-- Shared accounts.
-- Organizations later.
-- Membership roles.
-- Contribution shares.
-
-Transactions:
-
-- Expenses.
-- Income later.
-- Categories.
-- Recurring templates.
-- Currency normalization.
-- Search and filters.
-
-Financial planning:
-
-- Financial profile.
-- Budgets.
-- Goals.
-- Tax reserve.
-- Safe-to-spend.
-- Runway.
+Capability checks complement rather than replace authorization. The backend enforces both. The UI uses the resolved capabilities to compose navigation and page sections; hiding a control is never a security boundary.
 
-Insights and agents:
-
-- Rules engine.
-- Insight generation.
-- Scheduled pattern detection.
-- Recommendation impact simulations.
-- Recommendation queue.
-- Action inbox.
-- Agent action plans.
-- Approval workflows.
-- Evaluation data.
+Introduce only the minimum workspace-edition persistence needed for Phase 1 onboarding and composition. Keep it on the current Account boundary unless implementation analysis proves that a broader workspace model is already necessary. Any schema change requires an explicit domain decision and Alembic migration; tier entitlements and a full capability system remain later work.
 
-Professional intelligence:
+## Frontend Architecture
 
-- Deadline calendar.
-- Obligation templates by user type and jurisdiction.
-- Funding opportunity watchlist.
-- Regulatory/law-change watchlist integration later.
-- Source, applicability, and confidence metadata.
+### Stack Decision
 
-Documents and integrations:
+**Update 2026-11-22:** the founder decided to rebuild the frontend from scratch, starting from a new design, rather than evolve the Reflex prototype. The stack is open again: the first frontend design document will choose between Reflex and the React and TypeScript SPA described below, and this section will then be rewritten. Until that decision, the Reflex-specific guidance in this section, in "Reflex Structure", and in the Azure deployment target describes the previous plan.
 
-- Receipts.
-- Invoices.
-- CSV imports.
-- Exports.
-- Bank/accounting integrations later.
+Previous plan: retain Reflex through the Phase 1 product shell and evaluate it against real workflows in Phase 2. Product uncertainty is currently more important than frontend scale, and staying in Python reduces delivery overhead for the solo maintainer.
 
-Notifications:
+Reflex is conditional rather than permanent. Reconsider it if repeated evidence shows that:
 
-- Email.
-- Push later.
-- Scheduled reports.
-- Alerts.
-- Deadline reminders.
-- Recommendation digests.
+- dense transaction review or keyboard workflows require excessive custom wrappers;
+- routine interactions suffer from server event and WebSocket round trips;
+- responsive behavior requires duplicated page implementations;
+- accessibility or browser testing cannot be enforced reliably;
+- Reflex deployment/state operations become disproportionate;
+- two consecutive meaningful features take materially more effort than a React implementation would.
 
-## Data Flow
+If migration is justified, prefer a React and TypeScript SPA built with Vite, React Router, and a server-state library. The authenticated product does not currently require a second application backend or Next.js server rendering.
 
-Recommended flow:
+### Information Architecture
 
-1. User imports, uploads, or manually enters financial data.
-2. Transaction normalization standardizes amount, date, currency, account, category, and source.
-3. Rules and models enrich the data.
-4. Scheduled jobs detect patterns, risks, deadlines, and opportunities.
-5. Insight engine produces explainable recommendations with evidence and impact estimates.
-6. Action inbox presents recommendations.
-7. User approves, dismisses, snoozes, or edits.
-8. The system records feedback and audit events.
+Use five stable product areas:
 
-## Pattern And Recommendation Engine
+- Today;
+- Transactions;
+- Plan;
+- Inbox;
+- Settings.
 
-The first production-grade intelligence layer should be a deterministic service that runs on a schedule and creates insight records. AI can summarize and personalize explanations, but calculations should remain transparent.
+The edition changes page composition and capabilities, not the overall visual language. Account and member administration live under Settings rather than competing with daily work.
 
-Core inputs:
+### Reflex Structure
 
-- Normalized transactions.
-- Recurring templates.
-- Financial profile.
-- Goals and tax reserve settings.
-- User feedback on previous insights.
-- Professional deadline calendar.
+Evolve the prototype toward feature ownership:
 
-Core outputs:
+```text
+ui_reflex/ui_reflex/
+|-- pages/
+|-- features/
+|   |-- today/
+|   |-- transactions/
+|   |-- planning/
+|   |-- inbox/
+|   `-- account_management/
+|-- components/
+|   |-- primitives/
+|   |-- finance/
+|   |-- feedback/
+|   `-- shell/
+|-- state/
+|-- services/
+|-- contracts/
+`-- theme/
+```
 
-- Insight record.
-- Evidence payload with transaction IDs and date ranges.
-- Impact estimate, such as monthly savings, runway change, goal-date shift, or tax-reserve gap.
-- Recommendation options.
-- Confidence score.
-- Notification eligibility.
-- Audit log entry.
+Use mostly flat page or feature states. Keep only minimal session and account context shared. Store access tokens and other sensitive values in backend-only Reflex variables. Replace `Dict[str, Any]` at API boundaries with typed response models. Loading, error, empty, and success state belongs to each operation or section rather than one application-wide flag.
 
-Example rules:
+The Reflex API client should own:
 
-- Repeated weekday or weekend spending pattern.
-- Category spend drift versus prior baseline.
-- Subscription growth.
-- Upcoming cash-flow pinch.
-- Tax reserve underfunding.
-- Recurring professional deadline approaching.
+- base URL and timeout configuration;
+- bearer authorization;
+- 401/session-expiry handling;
+- typed response conversion;
+- safe error normalization;
+- correlation information where supported.
 
-Design constraints:
+Financial calculations remain FastAPI contracts. The UI must not independently derive safe-to-spend, tax reserves, eligibility, or other trusted headline values.
 
-- Make insights explainable and reproducible.
-- Store enough evidence to debug why an insight was generated.
-- Throttle repeated alerts.
-- Let users mute categories, rules, or specific recommendations.
-- Track accepted, dismissed, snoozed, and irrelevant feedback.
-- Treat legal, tax, and funding alerts as informational until reviewed by a human or trusted professional source.
+## Initial Azure Deployment Target
 
-## Professional Monitoring Architecture
+Phase 1 should first prove this small topology:
 
-Professional deadlines and external opportunity/law monitoring should start inside the monolith as a bounded module, then be extracted only if it proves valuable as a separate service.
+```text
+Browser
+  |-- static Reflex frontend -> Azure Static Web Apps
+  |-- Reflex events/WebSocket -> Azure Container Apps
+  `-- product API requests (through Reflex state) -> FastAPI on Azure Container Apps
 
-Start with:
+FastAPI -> Azure Database for PostgreSQL Flexible Server
+Secrets -> Azure Key Vault references / Container Apps managed identity
+Images -> Azure Container Registry
+Logs and metrics -> Azure Monitor / Log Analytics
+CI/CD -> GitHub Actions
+```
 
-- Manual deadline templates for tax, VAT, insurance, invoice follow-up, and accounting tasks.
-- User-configured jurisdiction, profession, business type, and filing cadence.
-- Scheduled reminder generation.
-- Source links for any external obligation template.
+Why this target:
 
-Later add:
+- Reflex supports exporting frontend and backend separately and depends on WebSockets for events.
+- Azure Container Apps supports WebSocket ingress and container revisions without requiring Kubernetes administration.
+- Azure Static Web Apps can publish the generated static frontend.
+- PostgreSQL Flexible Server provides managed backups, TLS, patching, and a burstable development tier.
 
-- Funding/opportunity source ingestion.
-- Law/regulatory source ingestion.
-- Applicability matching against a professional profile.
-- Human review or curation workflow for high-risk alerts.
-- Versioned source snapshots and citation storage.
-- API boundary so a future separate monitoring service can feed this product.
+The FastAPI, PostgreSQL, managed-identity, Key Vault, migration, HTTPS-health, Container Apps HTTP probes, and startup-log portions of this topology were manually proven in the development subscription on 2026-08-30. Reflex export, WebSocket connectivity, frontend/API CORS, backup/restore, rollback, infrastructure as code, and CI/CD remain unproven. Complete that thin spike before investing heavily in the redesigned UI.
 
-Do not begin with broad legal monitoring. It is a high-trust, high-liability surface. Validate with narrow deadline reminders and curated funding alerts first.
+For the private draft:
 
-## Roadmap
+- use one region close to the initial users;
+- use the smallest suitable non-production resources;
+- keep one Reflex backend replica if in-memory state is used;
+- do not scale the Reflex backend horizontally without a shared state manager such as Redis;
+- require TLS and narrow allowed origins;
+- keep secrets out of images, source control, workflow logs, and frontend state;
+- execute Alembic as a deliberate deployment step, not on every arbitrary process start;
+- document backup retention and perform at least one restore exercise before external pilot data matters.
 
-## Phase T0: Clean Repo Baseline
+Redis is not required for the founder-only draft if Reflex runs as a single replica and session loss on restart is accepted. Add a managed Redis-compatible state store only when availability or horizontal scaling justifies it.
 
-Objective: Make the repository reproducible and safe to build on.
+## Technical Execution By Product Phase
 
-Tasks:
+### Phase 1 - Deployable Shared Platform Draft
 
-- Track dependency files.
-- Decide whether active Reflex UI replaces old tracked UI.
-- Add root README.
-- Add `.env.example`.
-- Replace empty Dockerfile or remove it until useful.
-- Clean `.gitignore`.
-- Remove or quarantine temp/archive files.
-- Add setup and test commands.
-- Ensure `pytest` passes.
+Technical outcome: secure vertical deployment and a maintainable shared shell, with Personal/Household implemented as the first acceptance path and a basic Professional composition.
 
-Exit criteria:
+Required work:
 
-- Fresh clone can install dependencies and run tests.
-- `git status` only shows intentional work.
-- Active app files are tracked.
+- complete the endpoint/role authorization matrix, especially VIEWER writes;
+- move the UI to bearer authentication and `/auth/me`;
+- design and migrate the minimal Account edition field and edition-aware onboarding contract;
+- split the Reflex state and introduce typed API contracts;
+- build shared Today, Transactions, Plan, Inbox, and Settings shell behavior;
+- implement the Personal/Household composition first, then the basic Professional composition from shared components;
+- retain truthful budget and recurring information without future financial claims;
+- create Reflex production build/container configuration and infrastructure as code;
+- add GitHub Actions deployment after CI succeeds;
+- add browser smoke coverage for login and the main manual flow;
+- configure Azure health checks, structured logs, secrets, and database backups;
+- write a private-release and rollback checklist.
 
-## Phase T1: Correctness And Data Model Stabilization
+### Phase 2 - Personal And Household Decision MVP
 
-Objective: Fix known correctness issues before adding features.
+Technical outcome: trusted household decisions from normalized manual and CSV data, with clearer shared responsibility and a curated benefit/voucher foundation.
 
-Tasks:
+Required work:
 
-- Fix account creation to create owner membership.
-- Fix category seeding and onboarding.
-- Fix recurring scheduler to process all due templates.
-- Fix expense search filters.
-- Fix budget summary filters.
-- Fix membership share update.
-- Align financial profile schema and DB model.
-- Add migration for missing fields or remove unused fields.
-- Add tests for account creation, onboarding, and recurring catch-up.
+- add household income and import models, review staging, normalization, and duplicate detection;
+- implement available-to-spend, goals, reserves, upcoming bills, and shared-responsibility services;
+- store calculation inputs, period, assumptions, result, and evidence;
+- create an insight/action-inbox model with accept, dismiss, snooze, and irrelevant feedback;
+- add a curated Greek household benefit/voucher model with source and manual eligibility metadata;
+- add unit fixtures for household formulas and integration fixtures for imports and scheduled results.
 
-Exit criteria:
+### Phase 3 - Professional Decision MVP
 
-- Tests pass.
-- Main manual flows work end to end.
-- API behavior matches schema promises.
+Technical outcome: trusted Professional cash-flow decisions and professional opportunities on the already edition-aware platform.
 
-## Phase T2: Security And Authorization
+Required work:
 
-Objective: Replace prototype auth and close data leaks.
+- extend profiles for irregular income, professional obligations, and relevant jurisdiction data;
+- implement safe-to-spend or safe-to-pay-yourself, tax reserve, runway, and upcoming-obligation services;
+- add the minimum invoice/client-payment model required by cash-flow decisions;
+- add a centralized capability resolver and initial entitlement contract;
+- support safe switching between workspace contexts;
+- extend the shared opportunity model with professional grants, funding, deadlines, and audience rules;
+- test cross-edition visibility, cross-workspace isolation, and capability enforcement.
 
-Tasks:
+### Phase 4 - Trusted Automation And Full Rollout
 
-- Add real authentication.
-- Replace `X-User-Id` pseudo-auth.
-- Add passwordless email, OAuth, or simple JWT auth for MVP.
-- Add account-scoped authorization helpers.
-- Remove global list endpoints or restrict to admin.
-- Enforce VIEWER read-only server-side.
-- Add CORS configuration.
-- Add audit logs for sensitive actions.
-- Add tests for authorization boundaries.
+Technical outcome: operationally support paid editions and evidence-backed automation.
 
-Exit criteria:
+Possible work admitted by validated demand:
 
-- Users cannot access accounts, memberships, expenses, or profiles outside their scope.
-- Role behavior is enforced in backend, not just UI.
+- object storage and document processing;
+- worker queues for durable scheduled or long-running work;
+- categorization and extraction evaluation datasets;
+- automated eligibility rules and versioned source snapshots;
+- notification delivery, billing, retention, deletion, and support tooling;
+- recommendation quality monitoring and alert throttling;
+- approval policy, action ledger, output validation, and rollback before agent actions;
+- service extraction only where scaling or operational isolation proves necessary.
 
-## Phase T3: Frontend Product Shell
+## Testing And Release Gates
 
-Objective: Replace the temporary dashboard feel with a product-oriented UI.
+Every behavior change should begin with the narrowest relevant test and expand according to risk.
 
-Tasks:
+Before the Phase 1 Azure draft:
 
-- Create Today page.
-- Move account snapshot into a decision-focused layout.
-- Add Action Inbox.
-- Improve transaction table.
-- Add cash-flow timeline.
-- Add clear empty states.
-- Remove emoji-heavy developer styling.
-- Add mobile-responsive layout.
-- Decide whether Reflex remains long-term frontend.
+- Ruff, pytest, and fresh-database migration jobs pass in CI;
+- authentication and account-scoping tests cover every exposed resource family;
+- a production-mode frontend build succeeds;
+- browser smoke tests cover login, account entry, expense creation/search, and sign-out;
+- deployment health checks pass and logs contain no secrets;
+- migration, rollback, backup, and restore procedures are documented and exercised proportionally to the private-draft risk.
 
-Exit criteria:
+Later phases add:
 
-- First screen communicates product value.
-- A pilot user can understand what action to take next.
+- golden files for CSV imports and exports;
+- deterministic fixtures for financial calculations and recommendations;
+- source and eligibility evaluation fixtures;
+- frontend accessibility and responsive checks;
+- end-to-end tests for approved external actions.
 
-## Phase T4: Import, Export, And Documents
+Never treat generated prose as evidence that a financial, tax, or eligibility calculation is correct.
 
-Objective: Reduce manual data entry.
+## Security And Governance Gates
 
-Tasks:
+Before any non-local deployment:
 
-- CSV import.
-- Import review screen.
-- Duplicate detection.
-- CSV/PDF export.
-- Receipt attachment model.
-- File storage abstraction.
-- OCR proof of concept.
+- disable `X-User-Id` authentication;
+- enforce account and role authorization server-side;
+- configure narrow CORS origins and TLS;
+- keep credentials in managed secret storage;
+- prevent sensitive values from entering Reflex frontend state or logs.
 
-Exit criteria:
+Before external pilot users:
 
-- Users can bring real financial data into the product.
-- Export supports practical tax/accounting workflows.
+- define data deletion/export expectations and a minimal privacy statement;
+- verify backup/restore behavior;
+- audit sensitive mutations and recommendation feedback;
+- define how security issues and incorrect financial results are reported.
 
-## Phase T5: Insight Engine
+Before opportunity or regulatory intelligence:
 
-Objective: Generate useful recommendations without overusing AI.
+- store authoritative source, jurisdiction, publication/effective dates, freshness, audience, and applicability assumptions;
+- provide non-advice language and human review for high-risk information;
+- prevent cross-edition alerts and unsupported eligibility claims.
 
-Tasks:
+Before agents or external actions:
 
-- Create insight table/model.
-- Create recommendation queue.
-- Add rule-based insights.
-- Add safe-to-spend v0.
-- Add tax reserve v0.
-- Add upcoming bill warnings.
-- Add repeated spending pattern detection.
-- Add recommendation impact simulation.
-- Add insight evidence payloads.
-- Add snooze/dismiss/accepted feedback states.
-- Add weekly summary.
-- Track user feedback on insights.
-- Add scheduled insight generation.
-- Add deadline reminder model.
+- require explicit approval policies, an action ledger, evidence, failure handling, and rollback where possible.
 
-Exit criteria:
+## Immediate Technical Sequence
 
-- Product provides actionable recommendations from real data.
-- Insight precision can be measured.
-- Users can understand why a recommendation was generated.
-- Users can control notification noise.
+Only Phase 1 is active:
 
-## Phase T6: Professional Intelligence
+1. run the Azure deployment spike;
+2. close remaining authorization and UI-authentication gaps;
+3. add the minimal edition-aware Account contract and onboarding;
+4. refactor the UI state only as needed to build and validate Personal/Household first, then the basic Professional composition;
+5. automate deployment and complete the private-release gate.
 
-Objective: Add deadline and opportunity monitoring for professionals without overbuilding legal intelligence.
+## External Platform References
 
-Tasks:
-
-- Create professional profile fields: jurisdiction, work type, business type, filing cadence.
-- Add deadline templates for tax, VAT, social insurance, accounting, invoice follow-up, and contract renewals.
-- Add reminder schedules and escalation rules.
-- Add source metadata and applicability assumptions.
-- Add funding opportunity watchlist prototype.
-- Add fake-door or concierge workflow for law-change alerts.
-- Define API contract for a future separate regulatory/funding monitoring service.
-
-Exit criteria:
-
-- Pilot professionals receive useful deadline reminders.
-- Funding/law-change alerts are validated before automated ingestion.
-- The system remains informational and avoids unsafe legal/tax claims.
-
-## Phase T7: AI And Agent Layer
-
-Objective: Add bounded, explainable AI workflows.
-
-Tasks:
-
-- Build categorization evaluation dataset.
-- Add LLM-assisted categorization with confidence threshold.
-- Add explanation generation.
-- Add document extraction evaluation.
-- Add agent action schema.
-- Add approval policy engine.
-- Add action ledger.
-- Add rollback/undo support where possible.
-
-Exit criteria:
-
-- Agents produce bounded recommendations with evidence.
-- Risky actions require explicit approval.
-- AI quality is measured before launch.
-
-## Phase T8: Scale And Service Boundaries
-
-Objective: Prepare for business expansion without premature microservices.
-
-Tasks:
-
-- Move background jobs to a worker queue.
-- Add observability.
-- Add structured logs and metrics.
-- Add rate limiting.
-- Add data retention policies.
-- Add integration health checks.
-- Identify service extraction candidates.
-
-Microservices should be considered only when:
-
-- Independent scaling is needed.
-- Team ownership requires it.
-- Integrations/jobs create operational isolation needs.
-- The monolith becomes a deployment bottleneck.
-
-Likely future service boundaries:
-
-- Identity.
-- Transactions.
-- Documents.
-- Insights/agents.
-- Notifications.
-- Integrations.
-- Professional monitoring, if funding/law-change coverage becomes a reusable service.
-
-## Testing Strategy
-
-Short term:
-
-- Keep Postgres-based integration tests.
-- Add service-level unit tests for financial logic.
-- Add API authorization tests.
-- Add migration tests where feasible.
-
-Medium term:
-
-- Add frontend smoke tests.
-- Add import/export golden files.
-- Add insight evaluation fixtures.
-- Add scheduled insight fixture tests for repeated behavior and deadline reminders.
-- Add AI regression tests.
-
-Long term:
-
-- Add end-to-end tests for approved agent actions.
-- Add monitoring-driven quality checks.
-
-## Infrastructure Strategy
-
-Short term:
-
-- Local Postgres.
-- Alembic migrations.
-- Manual dev server.
-- Clear setup docs.
-
-Medium term:
-
-- Docker Compose.
-- CI tests.
-- Hosted app environment.
-- Managed Postgres.
-- Object storage for documents.
-- Worker process.
-
-Long term:
-
-- Queue and scheduled workers.
-- Metrics/logging/tracing.
-- Secrets manager.
-- Backup/restore.
-- Environment-specific deployments.
-
-## Security And Governance
-
-Required before real users:
-
-- Real auth.
-- Authorization by account and role.
-- Secure secrets.
-- PII handling.
-- Data deletion/export.
-- Audit logs.
-- Least-privilege integrations.
-
-Required before agents:
-
-- Approval policy engine.
-- Action ledger.
-- Evidence and explanation for recommendations.
-- Human confirmation for risky actions.
-- Failure handling and rollback.
-
-Required before professional monitoring:
-
-- Source provenance.
-- Jurisdiction and applicability metadata.
-- Alert confidence and freshness checks.
-- Clear non-advice disclaimers.
-- Review workflow for high-risk external alerts.
-
-## Recommended Immediate Milestone
-
-Milestone: Clean Build Base
-
-Tasks:
-
-- Fix account creation and recurring scheduling.
-- Fix repo tracking and dependency files.
-- Add root README and `.env.example`.
-- Make tests pass.
-- Commit the active UI intentionally.
-- List remaining debt as issues or backlog items.
-
-After this milestone, product development can resume without carrying fragile foundations.
+- Azure Container Apps ingress and WebSocket support: <https://learn.microsoft.com/azure/container-apps/ingress-overview>
+- Azure Container Apps deployment from source: <https://learn.microsoft.com/azure/container-apps/containerapp-up>
+- Azure Container Apps secrets and Key Vault references: <https://learn.microsoft.com/azure/container-apps/manage-secrets>
+- Azure Database for PostgreSQL Flexible Server: <https://learn.microsoft.com/azure/postgresql/flexible-server/overview>
+- Azure Static Web Apps: <https://learn.microsoft.com/azure/static-web-apps/>
+- Reflex self-hosting and export: <https://reflex.dev/docs/hosting/self-hosting/>
+- Reflex runtime and state architecture: <https://reflex.dev/docs/advanced-onboarding/how-reflex-works/>
