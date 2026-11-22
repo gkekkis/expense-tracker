@@ -1,26 +1,27 @@
 # Expense Tracker
 
-Financial management MVP built with FastAPI, SQLAlchemy/Postgres, Alembic, and a Reflex prototype UI.
+Financial decision platform built with FastAPI, SQLAlchemy/Postgres, Alembic, and a Reflex prototype UI.
 
-The current product direction is documented in:
+The current product direction is documented in the Markdown roadmaps:
 
 - `docs/updated_product_roadmap.md`
-- `docs/updated_product_roadmap.pdf`
 - `docs/technical_roadmap.md`
-- `docs/technical_roadmap.pdf`
+
+The PDF files under `docs/` are dated 2026-06-29 snapshots and are retained only as historical exports. They are not current sources of truth.
 
 ## Current Status
 
-This repository is being cleaned up into a stable build base. The backend already includes users, accounts, memberships, expenses, categories, recurring templates, currency normalization, financial profiles, and budget summaries. The UI is currently a Reflex prototype and should be treated as temporary product scaffolding.
+The backend includes users, accounts, memberships, expenses, categories, recurring templates, currency normalization, financial profiles, budget summaries, signed bearer authentication, account-scoped authorization, and audit logging. The UI is temporary Reflex product scaffolding.
+
+The product is planned as one platform with Personal and Professional editions. Personal and shared-household workflows receive slight chronological priority so the founder can test them directly; Professional remains the intended commercial wedge. The current milestone is a secure private shared-platform draft deployed on Azure by December 31, 2026; see `docs/updated_product_roadmap.md` for scope and `docs/technical_roadmap.md` for the implementation direction.
 
 ## Setup
 
-Create a virtual environment and install dependencies:
+Install the locked project dependencies with `uv`:
 
 ```powershell
-python -m venv .venv
+uv sync --locked
 .\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
 ```
 
 Copy environment settings:
@@ -58,16 +59,22 @@ print(f"Created clean DB: {db_name}")
 
 $env:DEV = "False"
 $env:TESTING = "False"
+# Alembic reads DATABASE_URL when DEV and TESTING are both False.
 $env:DATABASE_URL = "postgresql+psycopg2://postgres:postgres123@localhost:5432/my_expense_report_migration_smoke"
 
 .venv\Scripts\python.exe -m alembic upgrade head
 .venv\Scripts\python.exe -m alembic current
 ```
 
+The running FastAPI application uses `DB_USER`, `DB_PASSWORD`, `DB_HOST`,
+`DB_PORT`, and `DB_NAME` in this mode. Alembic currently uses `DATABASE_URL`,
+so set that variable explicitly when running migrations outside the local
+default setup.
+
 Expected Alembic version:
 
 ```text
-f8a1c2b3d4e5 (head)
+9b1d4f6e7a8c (head)
 ```
 
 Start the API:
@@ -75,6 +82,16 @@ Start the API:
 ```powershell
 uvicorn app.main:app --reload --port 8001
 ```
+
+## Container Image
+
+Build the FastAPI runtime image from the locked dependencies:
+
+```powershell
+docker build --tag expense-tracker-api:local .
+```
+
+The container needs the normal production database and authentication environment variables at runtime. When it connects to a local PostgreSQL instance through Docker Desktop, set `DB_HOST=host.docker.internal` rather than `localhost`.
 
 Configure browser origins that may call the API:
 
