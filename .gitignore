@@ -21,14 +21,10 @@ frontend_react_archived/
 .tmp_pdf/
 tasks/*
 
-# Agent instructions stay local
+# Agent tooling stays local
 /AGENTS.md
-
-# Claude Code: share project settings; keep skills, agents, and personal overrides local
-!.claude/settings.json
-.claude/settings.local.json
-.claude/skills/
-.claude/agents/
+.agents/
+.claude/
 
 # Reflex
 ui_reflex/**/.web/
