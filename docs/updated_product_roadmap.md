@@ -136,11 +136,11 @@ Begin with curated opportunities and manual eligibility guidance. Automated elig
 
 ## Four-Phase Rollout
 
-Dates after Phase 1 are directional and must be reviewed at each phase gate. The plan assumes one human owner supported by agents, not a staffed product team.
+Phases have no fixed dates: each phase starts when the previous phase's exit gate is met. The plan assumes one human owner supported by agents, not a staffed product team.
 
 ### Phase 1 - Deployable Shared Platform Draft
 
-Target: now through **2026-12-31**.
+Status: active.
 
 Outcome: a secure, private platform draft is deployed on Azure with Personal/Household as the first acceptance path and a basic Professional path on the same shared foundation.
 
@@ -176,7 +176,7 @@ Exit gate:
 
 ### Phase 2 - Personal And Household Decision MVP
 
-Directional target: first half of 2027.
+Starts after the Phase 1 exit gate.
 
 Outcome: the founder and a small Personal/Household cohort use the product through repeated financial cycles and can judge whether its decisions reduce everyday uncertainty.
 
@@ -199,7 +199,7 @@ Exit gate:
 
 ### Phase 3 - Professional Decision MVP
 
-Directional target: second half of 2027, after the Personal/Household decision gate.
+Starts after the Phase 2 Personal/Household decision gate.
 
 Outcome: freelancers use the Professional edition through at least four weekly financial cycles while the validated Personal/Household edition remains available.
 
@@ -222,7 +222,7 @@ Exit gate:
 
 ### Phase 4 - Trusted Automation And Full Rollout
 
-Target: evidence-gated; no committed date.
+Starts only when evidence justifies it.
 
 Outcome: both editions can support paid rollout with useful automation and bounded, auditable intelligence.
 
