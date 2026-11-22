@@ -12,7 +12,6 @@ dependencies = [
     "pydantic==2.12.4",
     "python-dateutil==2.9.0.post0",
     "python-dotenv==1.2.1",
-    "reflex==0.8.24.post1",
     "sqlalchemy==2.0.44",
     "uvicorn==0.38.0",
 ]
@@ -25,9 +24,7 @@ exclude = [
     ".ruff_cache",
     ".venv",
     ".vscode",
-    "*/__init__.py",
-    "ui_reflex/.web",
-    "ui_reflex/.states"
+    "*/__init__.py"
 ]
 
 target-version = "py311"

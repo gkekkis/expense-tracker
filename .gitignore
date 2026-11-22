@@ -25,9 +25,3 @@ tasks/*
 /AGENTS.md
 .agents/
 .claude/
-
-# Reflex
-ui_reflex/**/.web/
-ui_reflex/**/__pycache__/
-ui_reflex/**/.reflex/
-ui_reflex/**/.states/

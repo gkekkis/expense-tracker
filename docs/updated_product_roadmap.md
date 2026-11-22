@@ -155,7 +155,7 @@ In scope:
 - expose the same truthful manual foundation to Professional without advanced professional claims;
 - show only backend-supported budget and upcoming-item information;
 - add deployment configuration, secrets handling, logs, health checks, and repeatable CI/CD;
-- deploy FastAPI, Reflex, and PostgreSQL to a private Azure environment.
+- deploy FastAPI, the frontend, and PostgreSQL to a private Azure environment.
 
 Explicitly out of scope:
 
@@ -271,7 +271,7 @@ To keep the roadmap executable:
 
 Phase 1 is the only current commitment. The next planning unit should be a short sequence of deployable vertical slices:
 
-1. prove the Reflex/FastAPI/PostgreSQL Azure topology;
+1. prove the frontend/FastAPI/PostgreSQL Azure topology;
 2. complete secure UI authentication and introduce the minimal edition-aware workspace context;
 3. build the Personal/Household shell and truthful Today page first;
 4. add the basic Professional composition on the same shared components;

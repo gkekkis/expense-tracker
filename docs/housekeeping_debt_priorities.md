@@ -57,7 +57,7 @@ This document is a supporting debt register. Rollout sequence is governed by `do
 
 - Remove `X-User-Id` fallback before any non-local deployment.
 - Enforce VIEWER read-only behavior in backend services.
-- Move the Reflex UI to bearer-token authentication and `/auth/me`.
+- Use bearer-token authentication and `/auth/me` in the rebuilt frontend.
 - Complete the endpoint-by-role authorization matrix before inviting external testers.
 
 ## Priority 2: Database And Migration Health
@@ -84,7 +84,6 @@ This document is a supporting debt register. Rollout sequence is governed by `do
 - Add real loading/error/empty states.
 - Add membership share editing UI.
 - Add recurring-template create/update UI.
-- Split the monolithic `AppState` into minimal shared context and feature/page states.
 - Rebuild the frontend from a new design instead of evolving the Reflex prototype, choosing the stack in its first design document (see the technical roadmap). The other items in this section remain requirements for the new frontend where they apply.
 
 ## Priority 5: Product-MVP Foundations
