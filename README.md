@@ -1,6 +1,6 @@
 # Expense Tracker
 
-Financial decision platform built with FastAPI, SQLAlchemy/Postgres, Alembic, and a Reflex prototype UI.
+Financial decision platform built with FastAPI, SQLAlchemy/Postgres, and Alembic. The frontend is being rebuilt from a new design.
 
 The current product direction is documented in the Markdown roadmaps:
 
@@ -11,7 +11,7 @@ The PDF files under `docs/` are dated 2026-06-29 snapshots and are retained only
 
 ## Current Status
 
-The backend includes users, accounts, memberships, expenses, categories, recurring templates, currency normalization, financial profiles, budget summaries, signed bearer authentication, account-scoped authorization, and audit logging. The UI is temporary Reflex product scaffolding.
+The backend includes users, accounts, memberships, expenses, categories, recurring templates, currency normalization, financial profiles, budget summaries, signed bearer authentication, account-scoped authorization, and audit logging. There is no frontend in the repository while it is rebuilt; the previous Reflex prototype remains in the git history.
 
 The product is planned as one platform with Personal and Professional editions. Personal and shared-household workflows receive slight chronological priority so the founder can test them directly; Professional remains the intended commercial wedge. The current milestone is a secure private shared-platform draft deployed on Azure by December 31, 2026; see `docs/updated_product_roadmap.md` for scope and `docs/technical_roadmap.md` for the implementation direction.
 
@@ -127,14 +127,7 @@ for exact email lookup before adding a member.
 
 ## Frontend
 
-The active Reflex app lives in `ui_reflex/`.
-
-```powershell
-cd ui_reflex
-reflex run
-```
-
-Set `API_BASE_URL` if the backend is not running on `http://127.0.0.1:8001`.
+The frontend is being rebuilt from a new design; see "Frontend Architecture" in `docs/technical_roadmap.md`. The previous Reflex prototype was removed from the working tree and can be inspected in the git history, for example `git show 6193fe2:ui_reflex/ui_reflex/state/app_state.py`.
 
 ## Tests
 
