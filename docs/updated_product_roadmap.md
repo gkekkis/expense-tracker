@@ -1,6 +1,6 @@
 # Product Rollout Roadmap
 
-Date: 2026-08-29
+Date: 2026-08-29 (updated 2026-11-22)
 
 Status: Authoritative product direction and rollout north star.
 
@@ -11,7 +11,7 @@ The implementation architecture and technical gates are documented in `docs/tech
 Build one financial decision platform with two focused editions:
 
 - **Personal** for individuals and shared households.
-- **Professional** for freelancers, consultants, solo professionals, and eventually small teams.
+- **Professional** for freelancers, consultants, solo professionals, and, once freelancers are validated, small businesses.
 
 The product should turn financial data into timely, explainable actions. It is not intended to be another passive expense dashboard, a chatbot-first finance product, or a full accounting replacement.
 
@@ -69,7 +69,7 @@ An irrelevant capability must not appear merely because a user has a higher subs
 2. Is it supported for this jurisdiction and profile?
 3. Does the workspace's tier include it?
 
-Pricing and tier names are intentionally deferred until pilot value is validated.
+Pricing and tier names are intentionally deferred until pilot value is validated. The working tier hypothesis is recorded under "Feature Backlog And Tier Hypothesis".
 
 ## Product Experience
 
@@ -182,13 +182,15 @@ Outcome: the founder and a small Personal/Household cohort use the product throu
 
 In scope:
 
-- manual and CSV transaction import with review and duplicate handling;
-- household income and refunds, available-to-spend v0, upcoming bills, goals, and reserves;
-- clearer shared contributions, responsibility, and member review flows, including who paid for what and household shares with effective dates so past months keep the shares that applied then;
+- manual and CSV transaction import with review and duplicate handling, followed by Greek e-receipt import from the receipt QR code on the same review pipeline;
+- household income and refunds, available-to-spend v0, upcoming bills, goals (optionally set during onboarding), and reserves;
+- recurring items typed as essentials or subscriptions, with renewal reminders, and optional automatic approval for fixed-amount recurring items, with a workspace default of suggesting it for essentials or reviewing everything;
+- clearer shared contributions, responsibility, and member review flows, including splitting an expense, who paid for what, settling up, and household shares with effective dates so past months keep the shares that applied then;
 - password reset and change in the app, and sign out on every device, before the pilot cohort joins;
 - category management;
-- a rules-first action inbox with evidence and feedback;
-- weekly summaries;
+- a rules-first action inbox with evidence, feedback, and user-set alert priorities (for example, critical only);
+- weekly summaries and rules-based spending pattern insights;
+- the Greek e-payment target: how much of the required electronic spending the recorded expenses already cover, with non-advice wording;
 - a small curated Greek household benefit and voucher catalogue with manual eligibility guidance;
 - concise exports needed for household review.
 
@@ -212,7 +214,8 @@ In scope:
 - a Professional action inbox, weekly summary, and curated Greek professional deadlines;
 - extension of the shared opportunity model from household benefits to professional grants and funding;
 - edition-aware profile matching and manual eligibility guidance;
-- limited tier experiments based on demonstrated value.
+- the Greek e-payment target for Professional profiles;
+- limited tier experiments based on demonstrated value, starting from the tier hypothesis.
 
 Exit gate:
 
@@ -234,8 +237,9 @@ Candidate scope, admitted only by evidence:
 - richer invoice and client-payment workflows for Professional;
 - automated eligibility assessment for supported opportunities;
 - proactive pattern, anomaly, and deadline intelligence;
-- billing, tier enforcement, data export/deletion, retention controls, and operational support;
-- bank or accounting integrations where manual/CSV workflows have proven recurring demand;
+- billing and tier enforcement for the validated tiers, data export/deletion, retention controls, and operational support;
+- automatic capture from connected cards and bank accounts through a licensed account-information provider (PSD2), or accounting integrations, where manual, CSV, and e-receipt workflows have proven recurring demand;
+- conversational exploration of insights, only over reproducible results and with explicit consent for any third-party processing of financial data;
 - approved agent actions only after policy, evidence, audit, and rollback foundations exist.
 
 Exit gate:
@@ -244,6 +248,23 @@ Exit gate:
 - recommendation and eligibility quality can be evaluated and monitored;
 - privacy, security, data lifecycle, support, and reliability are ready for the intended audience;
 - automated actions remain bounded, explainable, and reversible where possible.
+
+## Feature Backlog And Tier Hypothesis
+
+### Tier Hypothesis
+
+A working hypothesis, not a pricing decision. Phase 3 tier experiments test it; Phase 4 enforces only what pilots validate.
+
+- **Free:** manual entry, Greek e-receipt QR import, and the truthful core: budget snapshot, upcoming bills, and critical warnings about the user's own money.
+- **Middle:** limited recommendations and insights, goals, and alert priorities.
+- **Top:** every capability, including automatic capture from connected cards and bank accounts.
+
+Never paywall the truth: the figures a user needs to understand their own position, and critical warnings about it, stay available in every tier. Paid tiers add depth and automation. Tier checks remain separate from edition applicability (see "Edition-Specific Capabilities"). Whether both editions share the same tiers is open.
+
+### Backlog Admitted By Evidence After Phase 3
+
+- temporary shared budgets for trips or events that settle into personal and shared expenses when they close, building on Phase 2 settle-up and Phase 3 workspace switching;
+- small businesses as a Professional audience after freelancers are validated, serving their financial decisions without becoming their accounting system (invoicing, VAT returns, and payroll stay out of scope).
 
 ## Scope Discipline
 
@@ -267,6 +288,7 @@ To keep the roadmap executable:
 - microservices;
 - complex simulations;
 - decorative dashboards, social features, and gamification without decision value;
+- splitting expenses with people outside the product;
 - small-business accounting replacement.
 
 ## Immediate Focus

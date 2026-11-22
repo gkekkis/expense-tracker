@@ -179,9 +179,11 @@ Required work:
 - add household income and import models, review staging, normalization, and duplicate detection;
 - implement available-to-spend, goals, reserves, upcoming bills, and shared-responsibility services;
 - store calculation inputs, period, assumptions, result, and evidence, including the exchange rate used for each converted entry;
-- add effective-dated household shares, refunds, and category management;
+- add a Greek e-receipt (QR) import adapter on the same review staging and duplicate detection, after CSV import, documenting the legal basis of each receipt source;
+- add effective-dated household shares, per-expense splits and settle-up, refunds, and category management;
+- add recurring-item types, renewal reminders, and automatic approval limited to fixed-amount items;
 - add password reset and change, and server-side session revocation for sign-out on every device;
-- create an insight/action-inbox model with accept, dismiss, snooze, and irrelevant feedback;
+- create an insight/action-inbox model with accept, dismiss, snooze, and irrelevant feedback, and per-user alert priorities;
 - add a curated Greek household benefit/voucher model with source and manual eligibility metadata;
 - add unit fixtures for household formulas and integration fixtures for imports and scheduled results.
 
@@ -210,6 +212,8 @@ Possible work admitted by validated demand:
 - categorization and extraction evaluation datasets;
 - automated eligibility rules and versioned source snapshots;
 - notification delivery, billing, retention, deletion, and support tooling;
+- card and bank-account capture through a licensed PSD2 account-information provider, with consent renewal and protection of stored bank data;
+- conversational insight exploration over stored, reproducible results, with consent for third-party model processing;
 - recommendation quality monitoring and alert throttling;
 - approval policy, action ledger, output validation, and rollback before agent actions;
 - service extraction only where scaling or operational isolation proves necessary.
