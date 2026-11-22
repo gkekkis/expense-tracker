@@ -167,6 +167,7 @@ Required work:
 - add GitHub Actions deployment after CI succeeds;
 - add browser smoke coverage for login and the main manual flow;
 - configure Azure health checks, structured logs, secrets, and database backups;
+- run the daily recurring-entry check as a scheduled job outside the web process;
 - write a private-release and rollback checklist.
 
 ### Phase 2 - Personal And Household Decision MVP
@@ -177,7 +178,9 @@ Required work:
 
 - add household income and import models, review staging, normalization, and duplicate detection;
 - implement available-to-spend, goals, reserves, upcoming bills, and shared-responsibility services;
-- store calculation inputs, period, assumptions, result, and evidence;
+- store calculation inputs, period, assumptions, result, and evidence, including the exchange rate used for each converted entry;
+- add effective-dated household shares, refunds, and category management;
+- add password reset and change, and server-side session revocation for sign-out on every device;
 - create an insight/action-inbox model with accept, dismiss, snooze, and irrelevant feedback;
 - add a curated Greek household benefit/voucher model with source and manual eligibility metadata;
 - add unit fixtures for household formulas and integration fixtures for imports and scheduled results.

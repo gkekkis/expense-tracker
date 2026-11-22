@@ -183,8 +183,10 @@ Outcome: the founder and a small Personal/Household cohort use the product throu
 In scope:
 
 - manual and CSV transaction import with review and duplicate handling;
-- household income, available-to-spend v0, upcoming bills, goals, and reserves;
-- clearer shared contributions, responsibility, and member review flows;
+- household income and refunds, available-to-spend v0, upcoming bills, goals, and reserves;
+- clearer shared contributions, responsibility, and member review flows, including who paid for what and household shares with effective dates so past months keep the shares that applied then;
+- password reset and change in the app, and sign out on every device, before the pilot cohort joins;
+- category management;
 - a rules-first action inbox with evidence and feedback;
 - weekly summaries;
 - a small curated Greek household benefit and voucher catalogue with manual eligibility guidance;
