@@ -1,26 +1,46 @@
+# Ruff runs from the project environment (`uv run --locked`), so its only version pin is the
+# `dev` dependency group in pyproject.toml, locked in uv.lock.
+# CI runs `pre-commit run --all-files --hook-stage manual`, which adds the manual-only
+# gitleaks history scan to the regular hooks.
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v6.0.0
+    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c  # frozen: v6.0.0
     hooks:
       - id: detect-private-key
       - id: check-added-large-files
+        args: [--enforce-all]
       - id: check-toml
       - id: check-yaml
       - id: check-json
       - id: check-merge-conflict
+        args: [--assume-in-merge]
       - id: check-case-conflict
       - id: debug-statements
       - id: end-of-file-fixer
       - id: trailing-whitespace
 
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.30.1
+    rev: 83d9cd684c87d95d656c1458ef04895a7f1cbd8e  # frozen: v8.30.1
     hooks:
       - id: gitleaks
+      - id: gitleaks
+        alias: gitleaks-history
+        name: Detect hardcoded secrets in git history
+        stages: [manual]
+        entry: gitleaks git --redact --verbose --no-banner --log-opts="--full-history --diff-filter=tuxdb --diff-merges=first-parent"
 
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.5
+  - repo: local
     hooks:
       - id: ruff-check
+        name: ruff check
+        entry: uv run --locked ruff check --force-exclude
+        language: system
+        types_or: [python, pyi, jupyter]
         args: [--fix]
+        require_serial: true
       - id: ruff-format
+        name: ruff format
+        entry: uv run --locked ruff format --force-exclude
+        language: system
+        types_or: [python, pyi, jupyter, markdown]
+        require_serial: true
