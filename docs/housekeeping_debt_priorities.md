@@ -84,7 +84,7 @@ This document is a supporting debt register. Rollout sequence is governed by `do
 - Add real loading/error/empty states.
 - Add membership share editing UI.
 - Add recurring-template create/update UI.
-- Rebuild the frontend from a new design instead of evolving the Reflex prototype, choosing the stack in its first design document (see the technical roadmap). The other items in this section remain requirements for the new frontend where they apply.
+- Rebuild the frontend from a new design as a React and TypeScript SPA (see "Stack Decision" in the technical roadmap). The other items in this section remain requirements for the new frontend where they apply.
 
 ## Priority 5: Product-MVP Foundations
 

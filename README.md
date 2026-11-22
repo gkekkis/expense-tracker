@@ -127,7 +127,7 @@ for exact email lookup before adding a member.
 
 ## Frontend
 
-The frontend is being rebuilt from a new design; see "Frontend Architecture" in `docs/technical_roadmap.md`. The previous Reflex prototype was removed from the working tree and can be inspected in the git history, for example `git show 6193fe2:ui_reflex/ui_reflex/state/app_state.py`.
+The frontend is being rebuilt from a new design as a React and TypeScript single-page application; see "Frontend Architecture" in `docs/technical_roadmap.md`. The previous Reflex prototype was removed from the working tree and can be inspected in the git history, for example `git show 6193fe2:ui_reflex/ui_reflex/state/app_state.py`.
 
 ## Tests
 

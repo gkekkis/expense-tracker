@@ -10,7 +10,7 @@ The repository is a Python modular monolith with:
 
 - FastAPI, Pydantic 2, SQLAlchemy, PostgreSQL, and Alembic;
 - APScheduler for current scheduled work;
-- no frontend in the working tree: the Reflex 0.8 prototype was removed on 2026-11-22 and remains in the git history;
+- no frontend in the working tree yet: the React and TypeScript rebuild has not started, and the removed Reflex 0.8 prototype remains in the git history;
 - signed bearer-token authentication, account-scoped authorization helpers, and audit logging;
 - a tracked backend Dockerfile;
 - GitHub Actions jobs for Ruff, pytest, and migration smoke testing;
@@ -68,20 +68,19 @@ Introduce only the minimum workspace-edition persistence needed for Phase 1 onbo
 
 ### Stack Decision
 
-**Update 2026-11-22:** the founder decided to rebuild the frontend from scratch, starting from a new design, rather than evolve the Reflex prototype. The stack is open again: the first frontend design document will choose between Reflex and the React and TypeScript SPA described below, and this section will then be rewritten. The Reflex prototype itself was removed from the working tree on 2026-11-22 and remains in the git history. Until the stack decision, the Reflex-specific guidance in this section, in "Reflex Structure", in the Azure deployment target, and in the Phase 1 required work describes the previous plan.
+Decided 2026-11-22: the frontend is rebuilt from a new design as a React and TypeScript single-page application. The starting point is Vite, React Router, and a server-state library; the frontend technical design confirms the specific libraries. The authenticated product needs neither server rendering nor a second application backend, so Next.js is out of scope.
 
-Previous plan: retain Reflex through the Phase 1 product shell and evaluate it against real workflows in Phase 2. Product uncertainty is currently more important than frontend scale, and staying in Python reduces delivery overhead for the solo maintainer.
+Why:
 
-Reflex is conditional rather than permanent. Reconsider it if repeated evidence shows that:
+- The frontend is rebuilt from scratch, so Reflex's main advantage, evolving the existing Python prototype, no longer applies. The prototype was removed on 2026-11-22 and remains in the git history.
+- The founder does not maintain frontend code; React is the most widely supported option for developers and agents to maintain.
+- A static SPA calling FastAPI directly removes the Reflex backend process, its WebSocket dependency, and its single-replica constraint from the Azure topology.
 
-- dense transaction review or keyboard workflows require excessive custom wrappers;
-- routine interactions suffer from server event and WebSocket round trips;
-- responsive behavior requires duplicated page implementations;
-- accessibility or browser testing cannot be enforced reliably;
-- Reflex deployment/state operations become disproportionate;
-- two consecutive meaningful features take materially more effort than a React implementation would.
+Trade-offs:
 
-If migration is justified, prefer a React and TypeScript SPA built with Vite, React Router, and a server-state library. The authenticated product does not currently require a second application backend or Next.js server rendering.
+- The founder does not review frontend code, so the frontend evaluator, design evaluator, and security expert reviews are the code-level safeguard.
+- Access tokens are handled in the browser; session handling and token storage need an explicit, security-reviewed design.
+- npm dependencies add supply-chain risk and a Node toolchain to CI; dependencies stay few, locked, and justified.
 
 ### Information Architecture
 
@@ -95,33 +94,16 @@ Use five stable product areas:
 
 The edition changes page composition and capabilities, not the overall visual language. Account and member administration live under Settings rather than competing with daily work.
 
-### Reflex Structure
+### Frontend Structure
 
-Evolve the prototype toward feature ownership:
+The frontend technical design defines the project layout. It keeps these principles:
 
-```text
-ui_reflex/ui_reflex/
-|-- pages/
-|-- features/
-|   |-- today/
-|   |-- transactions/
-|   |-- planning/
-|   |-- inbox/
-|   `-- account_management/
-|-- components/
-|   |-- primitives/
-|   |-- finance/
-|   |-- feedback/
-|   `-- shell/
-|-- state/
-|-- services/
-|-- contracts/
-`-- theme/
-```
+- organize code by feature (Today, Transactions, Plan, Inbox, Settings) with shared components for primitives, finance, feedback, and the shell;
+- keep only minimal session and account context shared; server data lives in the server-state library;
+- type every API request and response against the FastAPI schemas;
+- give each operation or section its own loading, error, empty, and success state rather than one application-wide flag.
 
-Use mostly flat page or feature states. Keep only minimal session and account context shared. Store access tokens and other sensitive values in backend-only Reflex variables. Replace `Dict[str, Any]` at API boundaries with typed response models. Loading, error, empty, and success state belongs to each operation or section rather than one application-wide flag.
-
-The Reflex API client should own:
+The API client should own:
 
 - base URL and timeout configuration;
 - bearer authorization;
@@ -138,9 +120,8 @@ Phase 1 should first prove this small topology:
 
 ```text
 Browser
-  |-- static Reflex frontend -> Azure Static Web Apps
-  |-- Reflex events/WebSocket -> Azure Container Apps
-  `-- product API requests (through Reflex state) -> FastAPI on Azure Container Apps
+  |-- static React SPA -> Azure Static Web Apps
+  `-- product API requests -> FastAPI on Azure Container Apps
 
 FastAPI -> Azure Database for PostgreSQL Flexible Server
 Secrets -> Azure Key Vault references / Container Apps managed identity
@@ -151,25 +132,21 @@ CI/CD -> GitHub Actions
 
 Why this target:
 
-- Reflex supports exporting frontend and backend separately and depends on WebSockets for events.
-- Azure Container Apps supports WebSocket ingress and container revisions without requiring Kubernetes administration.
-- Azure Static Web Apps can publish the generated static frontend.
+- The React SPA builds to static files that need no server process of their own.
+- Azure Static Web Apps publishes the static frontend.
+- Azure Container Apps runs FastAPI with revisions and HTTPS ingress without requiring Kubernetes administration.
 - PostgreSQL Flexible Server provides managed backups, TLS, patching, and a burstable development tier.
 
-The FastAPI, PostgreSQL, managed-identity, Key Vault, migration, HTTPS-health, Container Apps HTTP probes, and startup-log portions of this topology were manually proven in the development subscription on 2026-08-30. Reflex export, WebSocket connectivity, frontend/API CORS, backup/restore, rollback, infrastructure as code, and CI/CD remain unproven. Complete that thin spike before investing heavily in the redesigned UI.
+The FastAPI, PostgreSQL, managed-identity, Key Vault, migration, HTTPS-health, Container Apps HTTP probes, and startup-log portions of this topology were manually proven in the development subscription on 2026-08-30. Frontend hosting, frontend/API CORS, backup/restore, rollback, infrastructure as code, and CI/CD remain unproven. Complete that thin spike before investing heavily in the redesigned UI.
 
 For the private draft:
 
 - use one region close to the initial users;
 - use the smallest suitable non-production resources;
-- keep one Reflex backend replica if in-memory state is used;
-- do not scale the Reflex backend horizontally without a shared state manager such as Redis;
-- require TLS and narrow allowed origins;
+- require TLS and allow only the deployed frontend origin in CORS;
 - keep secrets out of images, source control, workflow logs, and frontend state;
 - execute Alembic as a deliberate deployment step, not on every arbitrary process start;
 - document backup retention and perform at least one restore exercise before external pilot data matters.
-
-Redis is not required for the founder-only draft if Reflex runs as a single replica and session loss on restart is accepted. Add a managed Redis-compatible state store only when availability or horizontal scaling justifies it.
 
 ## Technical Execution By Product Phase
 
@@ -180,13 +157,13 @@ Technical outcome: secure vertical deployment and a maintainable shared shell, w
 Required work:
 
 - complete the endpoint/role authorization matrix, especially VIEWER writes;
-- move the UI to bearer authentication and `/auth/me`;
+- build the frontend on bearer authentication and `/auth/me`;
 - design and migrate the minimal Account edition field and edition-aware onboarding contract;
-- split the Reflex state and introduce typed API contracts;
+- design the frontend and introduce typed API contracts;
 - build shared Today, Transactions, Plan, Inbox, and Settings shell behavior;
 - implement the Personal/Household composition first, then the basic Professional composition from shared components;
 - retain truthful budget and recurring information without future financial claims;
-- create Reflex production build/container configuration and infrastructure as code;
+- create the frontend production build and hosting configuration, and infrastructure as code;
 - add GitHub Actions deployment after CI succeeds;
 - add browser smoke coverage for login and the main manual flow;
 - configure Azure health checks, structured logs, secrets, and database backups;
@@ -291,15 +268,13 @@ Only Phase 1 is active:
 1. run the Azure deployment spike;
 2. close remaining authorization and UI-authentication gaps;
 3. add the minimal edition-aware Account contract and onboarding;
-4. refactor the UI state only as needed to build and validate Personal/Household first, then the basic Professional composition;
+4. design and build the React frontend for Personal/Household first, then the basic Professional composition;
 5. automate deployment and complete the private-release gate.
 
 ## External Platform References
 
-- Azure Container Apps ingress and WebSocket support: <https://learn.microsoft.com/azure/container-apps/ingress-overview>
+- Azure Container Apps ingress: <https://learn.microsoft.com/azure/container-apps/ingress-overview>
 - Azure Container Apps deployment from source: <https://learn.microsoft.com/azure/container-apps/containerapp-up>
 - Azure Container Apps secrets and Key Vault references: <https://learn.microsoft.com/azure/container-apps/manage-secrets>
 - Azure Database for PostgreSQL Flexible Server: <https://learn.microsoft.com/azure/postgresql/flexible-server/overview>
 - Azure Static Web Apps: <https://learn.microsoft.com/azure/static-web-apps/>
-- Reflex self-hosting and export: <https://reflex.dev/docs/hosting/self-hosting/>
-- Reflex runtime and state architecture: <https://reflex.dev/docs/advanced-onboarding/how-reflex-works/>
