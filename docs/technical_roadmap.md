@@ -10,7 +10,7 @@ The repository is a Python modular monolith with:
 
 - FastAPI, Pydantic 2, SQLAlchemy, PostgreSQL, and Alembic;
 - APScheduler for current scheduled work;
-- a tracked Reflex 0.8 prototype UI;
+- no frontend in the working tree: the Reflex 0.8 prototype was removed on 2026-11-22 and remains in the git history;
 - signed bearer-token authentication, account-scoped authorization helpers, and audit logging;
 - a tracked backend Dockerfile;
 - GitHub Actions jobs for Ruff, pytest, and migration smoke testing;
@@ -23,10 +23,8 @@ The current backend supports users, accounts, memberships, expenses, categories,
 
 ## Immediate Constraints
 
-- The Reflex UI still uses the local-only `X-User-Id` prototype path instead of the bearer-token API.
-- UI state is concentrated in one large `AppState`, with one global loading flag and untyped dictionary payloads.
-- The current Overview page is a temporary dashboard and the budget summary is not safe-to-spend.
-- The existing Dockerfile packages only FastAPI; Reflex production export and hosting are not configured.
+- There is no frontend until the rebuild; the new frontend must use the bearer-token API, and the budget summary is not safe-to-spend.
+- The existing Dockerfile packages only FastAPI; frontend production build and hosting are not configured.
 - CI validates code and migrations but does not deploy an environment or run browser smoke tests.
 - The Azure backend foundation is configured manually rather than as infrastructure as code. A repeatable deployment workflow, backup/restore exercise, and rollback procedure are still absent from the repository.
 - APScheduler currently runs inside the FastAPI web process. With scale-to-zero, scheduled work is not dependable; retain one API replica at most for this development spike and do not rely on scheduled processing until it is moved to an appropriate worker/job design.
@@ -70,7 +68,7 @@ Introduce only the minimum workspace-edition persistence needed for Phase 1 onbo
 
 ### Stack Decision
 
-**Update 2026-11-22:** the founder decided to rebuild the frontend from scratch, starting from a new design, rather than evolve the Reflex prototype. The stack is open again: the first frontend design document will choose between Reflex and the React and TypeScript SPA described below, and this section will then be rewritten. Until that decision, the Reflex-specific guidance in this section, in "Reflex Structure", and in the Azure deployment target describes the previous plan.
+**Update 2026-11-22:** the founder decided to rebuild the frontend from scratch, starting from a new design, rather than evolve the Reflex prototype. The stack is open again: the first frontend design document will choose between Reflex and the React and TypeScript SPA described below, and this section will then be rewritten. The Reflex prototype itself was removed from the working tree on 2026-11-22 and remains in the git history. Until the stack decision, the Reflex-specific guidance in this section, in "Reflex Structure", in the Azure deployment target, and in the Phase 1 required work describes the previous plan.
 
 Previous plan: retain Reflex through the Phase 1 product shell and evaluate it against real workflows in Phase 2. Product uncertainty is currently more important than frontend scale, and staying in Python reduces delivery overhead for the solo maintainer.
 
@@ -267,7 +265,7 @@ Before any non-local deployment:
 - enforce account and role authorization server-side;
 - configure narrow CORS origins and TLS;
 - keep credentials in managed secret storage;
-- prevent sensitive values from entering Reflex frontend state or logs.
+- prevent sensitive values from entering frontend state or logs.
 
 Before external pilot users:
 
