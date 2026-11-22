@@ -5,6 +5,7 @@ settings.json
 *.log
 temp.txt
 tests/*.db
+.coverage
 
 #Folders
 misc/
@@ -18,6 +19,16 @@ output_dir/
 */__pycache__/
 frontend_react_archived/
 .tmp_pdf/
+tasks/*
+
+# Agent instructions stay local
+/AGENTS.md
+
+# Claude Code: share project settings; keep skills, agents, and personal overrides local
+!.claude/settings.json
+.claude/settings.local.json
+.claude/skills/
+.claude/agents/
 
 # Reflex
 ui_reflex/**/.web/

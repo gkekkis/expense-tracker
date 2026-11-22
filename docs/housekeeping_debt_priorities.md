@@ -1,6 +1,8 @@
 # Housekeeping And Technical Debt Priorities
 
-Date: 2026-06-29
+Date: 2026-08-29
+
+This document is a supporting debt register. Rollout sequence is governed by `docs/updated_product_roadmap.md`; technical direction is governed by `docs/technical_roadmap.md`.
 
 ## Completed In This Pass
 
@@ -9,7 +11,7 @@ Date: 2026-06-29
 - Added root `README.md`.
 - Added `.env.example`.
 - Replaced empty `Dockerfile` with a minimal backend runtime image.
-- Updated root `requirements.txt` to include the actual backend/test/UI-adjacent dependencies.
+- Adopted `pyproject.toml` and `uv.lock` as the locked root dependency source used by the backend container image.
 - Updated `ui_reflex/requirements.txt` to include `httpx`.
 - Cleaned `.gitignore` so project metadata and dependency files are no longer hidden.
 - Fixed account creation so the current user becomes account OWNER.
@@ -27,7 +29,7 @@ Date: 2026-06-29
 - Added regression coverage for account creation ownership/category seeding.
 - Added Alembic migration for financial profiles, membership shares, responsibility fields, and recurring-template ownership/currency fields.
 - Ignored Reflex generated state caches from the root `.gitignore`.
-- Synced the project virtual environment with `requirements.txt`.
+- Synced the project virtual environment from the locked `uv` dependency set.
 - Reworked Ruff settings into a practical baseline and moved deprecated config keys.
 - Simplified stale pre-commit configuration around core hygiene checks, gitleaks, and Ruff.
 - Ran Ruff format/check successfully.
@@ -41,18 +43,22 @@ Date: 2026-06-29
 - Added environment-driven CORS configuration for frontend/API browser access.
 - Added internal audit logs for account, membership, expense, and financial-profile mutations.
 
-## Priority 0: Clean Baseline Before Product Work
+## Priority 0: Phase 1 Deployment Baseline
 
-- Decide and commit the active UI path: keep `ui_reflex/ui_reflex`, remove old `ui_reflex/expense_ui`.
 - Decide whether to reset local/dev databases or backfill historical expenses before relying on migrations with existing data.
 - Add `.env.example` values to any setup docs that need them.
-- Run `pre-commit run --all-files` after deciding whether to include untracked/generated docs in the first cleanup commit.
 - Confirm a fresh clone can run backend tests from README instructions.
+- Add a production build and deployment path for the rebuilt frontend.
+- Add Azure infrastructure, secrets, health checks, logs, migration execution, and rollback documentation.
+- Add deployment automation after CI succeeds.
+- Run the pre-commit hooks and pytest with coverage in CI (`pytest-cov` is already a dev dependency), with an agreed coverage threshold.
 
 ## Priority 1: Security And Data Isolation
 
 - Remove `X-User-Id` fallback before any non-local deployment.
 - Enforce VIEWER read-only behavior in backend services.
+- Move the Reflex UI to bearer-token authentication and `/auth/me`.
+- Complete the endpoint-by-role authorization matrix before inviting external testers.
 
 ## Priority 2: Database And Migration Health
 
@@ -64,6 +70,7 @@ Date: 2026-06-29
 ## Priority 3: API Correctness
 
 - Add tests for each role and each protected endpoint.
+- Replace `float` arithmetic for normalized expense totals in `app/services/currency_service.py` with `Decimal` and explicit rounding, and add a regression test with amounts that expose binary floating-point error.
 - Validate category ownership on expense creation, not only update/search.
 - Decide whether total amount should include cancelled/pending expenses by default and document behavior.
 - Add stable pagination metadata and next/previous semantics.
@@ -77,12 +84,15 @@ Date: 2026-06-29
 - Add real loading/error/empty states.
 - Add membership share editing UI.
 - Add recurring-template create/update UI.
-- Decide whether Reflex remains the long-term frontend before building complex workflows.
+- Split the monolithic `AppState` into minimal shared context and feature/page states.
+- Rebuild the frontend from a new design instead of evolving the Reflex prototype, choosing the stack in its first design document (see the technical roadmap). The other items in this section remain requirements for the new frontend where they apply.
 
 ## Priority 5: Product-MVP Foundations
 
+- Add the minimal Personal/Professional edition field and onboarding flow needed for the Phase 1 shared draft.
+- Use Personal/Household as the first acceptance path while keeping the underlying components edition-neutral.
 - Add CSV import before bank aggregation.
-- Add safe-to-spend v0.
+- Add household available-to-spend v0 before Professional safe-to-spend and tax-reserve logic.
 - Add cash-flow timeline.
 - Add action inbox data model.
 - Add weekly summary generation.

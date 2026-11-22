@@ -1,536 +1,278 @@
-# Updated Product Roadmap
+# Product Rollout Roadmap
 
-Date: 2026-06-29
+Date: 2026-08-29
 
-## Executive Direction
+Status: Authoritative product direction and rollout north star.
 
-The product should evolve from a manual expense tracker into a financial decision platform. The strongest near-term positioning is not a generic budgeting app. The best wedge is a practical cash-flow copilot for freelancers, consultants, solo professionals, and eventually small teams.
+The implementation architecture and technical gates are documented in `docs/technical_roadmap.md`.
 
-The product should answer questions users actively care about:
+## North Star
 
-- Can I safely spend money this week?
-- What bills, taxes, or cash-flow risks are coming?
-- Which expenses, subscriptions, or behaviors need attention?
-- What repeated spending patterns are quietly hurting my goals?
-- What action should I take now?
-- What would happen if I changed this behavior by 10%, 25%, or 50%?
-- What changed since last week?
+Build one financial decision platform with two focused editions:
 
-AI should appear as operational intelligence and action recommendations, not as a chatbot-first feature.
+- **Personal** for individuals and shared households.
+- **Professional** for freelancers, consultants, solo professionals, and eventually small teams.
 
-## Target Users
+The product should turn financial data into timely, explainable actions. It is not intended to be another passive expense dashboard, a chatbot-first finance product, or a full accounting replacement.
 
-### Primary Initial Segment: Freelancers And Solo Professionals
+Chronological delivery gives Personal and shared households a slight priority so the founder can test the product continuously with real data. Professional remains the intended commercial wedge and follows on the same platform rather than in a second codebase.
 
-This segment has a clearer willingness to pay than generic consumers because money management is tied to taxes, invoices, runway, client timing, and business survival.
+## Product Model
 
-Key pain points:
+### Identity And Workspaces
 
-- Irregular income makes monthly budgeting unreliable.
-- Receipts and expenses are tedious to organize.
-- Tax reserves are easy to underfund.
-- Deadlines for taxes, insurance, accounting, invoices, and administrative obligations are easy to miss.
-- Users need cash-flow clarity before making spending decisions.
-- Personal and business expenses often mix.
-- Existing tools show data but rarely recommend timely actions.
+A user is a person with one identity. A workspace is the financial context in which the person is operating.
 
-### Secondary Segment: Shared Households
+A user may eventually belong to more than one workspace, for example:
 
-Shared households are useful for validating multi-member accounts and fair-split logic, but the monetization ceiling may be lower.
+- an individual Personal workspace;
+- a shared Personal workspace with household members;
+- a Professional workspace with an accountant or collaborator.
 
-Key pain points:
+Personal and household use do not need separate editions. Household behavior is collaboration within the Personal edition. Edition and collaboration are separate concepts:
 
-- Shared expenses are difficult to split fairly.
-- Recurring bills create recurring disputes.
-- Members need visibility without giving everyone full control.
+- `PERSONAL` or `PROFESSIONAL` determines the relevant product capabilities;
+- individual or shared membership determines who participates and what each member may do.
 
-### Later Segment: Small Businesses
+The current backend `Account` remains the source of truth until a workspace model is deliberately designed and migrated with Alembic.
 
-Small businesses should come later, after the product proves its intelligence layer with simpler workflows.
+### Shared Platform Capabilities
 
-Key pain points:
+Both editions can reuse:
 
-- Cash-flow forecasting.
-- Invoice and payment monitoring.
-- Reporting.
-- Cost optimization.
-- Approval workflows.
-- Financial document automation.
+- identity, authentication, accounts, memberships, and roles;
+- transactions, categories, recurring items, and currency normalization;
+- goals, reserves, imports, exports, and notifications;
+- explainable recommendations and feedback;
+- opportunity ingestion, source provenance, deadlines, and eligibility criteria;
+- privacy, authorization, audit history, and human approval controls.
 
-## Product Positioning
+### Edition-Specific Capabilities
 
-Recommended positioning:
+Personal focuses on:
 
-"An AI cash-flow copilot for freelancers and small teams that turns financial data into timely, explainable actions."
+- household safe-to-spend and bill coverage;
+- savings goals and shared spending;
+- fair contribution and responsibility views;
+- household benefits, subsidies, and vouchers.
 
-Avoid positioning as:
+Professional focuses on:
 
-- Another expense tracker.
-- A generic budgeting app.
-- A chatbot for finance.
-- A full accounting replacement at MVP stage.
+- irregular income, cash runway, and safe-to-pay-yourself decisions;
+- tax reserves and professional obligations;
+- invoices, client payment timing, and business expenses;
+- professional grants, subsidies, and funding opportunities.
 
-## Differentiation
+An irrelevant capability must not appear merely because a user has a higher subscription tier. Applicability and commercial entitlement are separate checks:
 
-The product can stand out by combining:
+1. Is the capability relevant to this edition?
+2. Is it supported for this jurisdiction and profile?
+3. Does the workspace's tier include it?
 
-- Cash-flow decisioning instead of passive dashboards.
-- Scheduled pattern detection instead of one-off reports.
-- Agentic recommendations with human approval.
-- Explainable financial reasoning.
-- Personalized recurring-bill, tax, runway, and anomaly logic.
-- Deadline, obligation, and opportunity monitoring for professional users.
-- Practical workflows around receipts, invoices, exports, and reports.
-- Strong privacy, role-based access, and auditability.
+Pricing and tier names are intentionally deferred until pilot value is validated.
 
-AI should be used where it reduces work or improves decisions:
+## Product Experience
 
-- Categorization.
-- Receipt and invoice extraction.
-- Pattern detection.
-- Recommendation simulation.
-- Deadline and obligation monitoring.
-- Forecast explanation.
-- Recommendation generation.
-- Action queue prioritization.
+### Shared Information Architecture
 
-## Pattern Intelligence And Recommendations
+Both editions use the same calm, decision-oriented shell:
 
-This should become a core product capability, not a decorative insight panel.
+1. **Today** - current position, upcoming risks, and the next useful actions.
+2. **Transactions** - capture, search, review, categorize, and approve.
+3. **Plan** - cash flow, recurring obligations, reserves, and goals.
+4. **Inbox** - recommendations, deadlines, warnings, and approvals.
+5. **Settings** - workspaces, members, profile, currency, preferences, and security.
 
-The product should periodically analyze spending, income, recurring obligations, and user goals, then produce specific recommendations with evidence and estimated impact. For example:
+Accounts and members are administrative context rather than primary daily destinations. Desktop is the efficient working surface; mobile prioritizes quick checking, capture, and review.
 
-- "You spent EUR X on Friday nights in the last eight weeks. If you reduce this by 25%, your emergency fund date moves forward by Y weeks."
-- "Your subscriptions increased by X% since March. Here are the three largest contributors."
-- "Your client payments usually arrive around day X, but this month your next bill is due earlier. Keep EUR Y reserved."
-- "You are on pace to underfund taxes by EUR X this quarter."
+### Today By Edition
 
-High-value recommendation format:
+Professional Today eventually prioritizes:
 
-- Observation: what pattern was detected.
-- Evidence: transactions, dates, categories, and trend.
-- Impact: cash-flow, tax reserve, runway, goal, or deadline effect.
-- Options: realistic actions at different effort levels.
-- Confidence: why the system believes this matters.
-- User control: dismiss, snooze, accept, mark irrelevant, or turn into an action.
+- safe to spend or safe to pay yourself;
+- upcoming bills and expected income;
+- tax reserve and runway;
+- overdue invoices and professional deadlines;
+- a short action inbox;
+- transactions requiring review.
 
-This should start rules-first. AI can help summarize, personalize tone, and explain trade-offs, but the first version should not depend on opaque model reasoning for financial calculations.
+Personal Today eventually prioritizes:
 
-## Professional Deadline And Opportunity Intelligence
+- available household money and upcoming bills;
+- savings and reserve progress;
+- shared expenses requiring review;
+- household benefit or voucher deadlines;
+- a short action inbox;
+- recent important activity.
 
-For freelancers and professionals, the product can become more valuable by monitoring obligations and opportunities, not only expenses.
+The UI must never overstate what the backend currently calculates. Until a trusted safe-to-spend contract exists, the initial Today page must use truthful labels such as **Budget snapshot** or **Available this month**.
 
-Useful reminders:
+### Design Principles
 
-- Tax/VAT/social insurance/accounting filing deadlines.
-- Invoice follow-up and payment deadlines.
-- Contract renewal or subscription renewal dates.
-- Cash reserve deadlines for expected obligations.
-- Funding, grant, or subsidy deadlines where eligibility can be inferred from the user's profile.
-- Regulatory or law-change alerts that may affect the user's business, tax position, reporting duties, or available benefits.
+- Practicality and decision value take priority over decoration.
+- Important figures must explain their period, inputs, freshness, and next action.
+- Financial calculations belong to tested backend services; the UI presents and explains them.
+- Use charts only when they clarify a decision, trend, or future risk.
+- Use plain language, consistent money formatting, accessible status colors, and clear empty states.
+- Start recommendations with deterministic rules. AI may summarize or personalize only after the underlying result is reproducible.
+- Require human confirmation for external, financial, legal, tax, or compliance-sensitive actions.
 
-This capability should be handled carefully:
+## Opportunity And Eligibility Intelligence
 
-- It should not pretend to provide legal, tax, or accounting advice without professional review.
-- Every external alert should include source, jurisdiction, publication date, applicability assumptions, and confidence.
-- User confirmation should be required before acting on anything external or compliance-sensitive.
-- The system should prefer "this may affect you; review this source or speak to a professional" over definitive legal conclusions.
+Opportunity intelligence is a shared platform capability with edition-specific targeting.
 
-The law-change and funding-monitoring idea may justify a separate project or service if it can serve multiple products. My recommendation is to keep it as a separate bounded domain conceptually, but integrate it later through an API or data feed. In this finance app, start with manual/professional calendars and curated deadline templates before building a broad legal-monitoring platform.
+The common pipeline should eventually support:
 
-## Roadmap Phases
+1. ingesting or curating an authoritative source;
+2. recording jurisdiction, audience, dates, criteria, and source freshness;
+3. classifying the opportunity for Personal, Professional, or both;
+4. matching it against the appropriate profile;
+5. presenting evidence, assumptions, confidence, and next steps;
+6. recording saved, dismissed, irrelevant, and applied feedback.
 
-## Phase 0: Stabilized Manual MVP
+For Greece, the same infrastructure may serve household vouchers and professional grants, but the audience rules and UI language must remain distinct. Freelancer tax updates belong only to Professional. Household benefits belong only to Personal.
 
-Objective: Make the current product reliable enough to use manually.
+Begin with curated opportunities and manual eligibility guidance. Automated eligibility assessment is a possible higher-tier capability only after source quality, profile data, and criteria evaluation have been validated. The product must not present legal, tax, or eligibility conclusions as guaranteed outcomes.
 
-Target users: Founder, pilot users, friendly testers.
+## Four-Phase Rollout
 
-Problems addressed:
+Dates after Phase 1 are directional and must be reviewed at each phase gate. The plan assumes one human owner supported by agents, not a staffed product team.
 
-- Basic account and expense organization.
-- Shared account visibility.
-- Recurring expenses.
-- Budget snapshot.
+### Phase 1 - Deployable Shared Platform Draft
 
-Features:
+Target: now through **2026-12-31**.
 
-- Real account creation with owner membership.
-- Expense search and filtering.
-- Category selection.
-- Multi-currency totals.
-- Recurring templates and pending generated expenses.
-- Financial profile.
-- Basic budget health.
-- Member roles.
+Outcome: a secure, private platform draft is deployed on Azure with Personal/Household as the first acceptance path and a basic Professional path on the same shared foundation.
 
-Technical work:
+In scope:
 
-- Clean repo structure.
-- Track dependency and setup files.
-- Fix migrations and model mismatches.
-- Fix scheduler behavior.
-- Enforce backend authorization.
-- Stabilize Reflex UI.
-- Add root documentation.
-- Add CI-ready test commands.
+- close remaining authorization, role, migration, and deployment blockers;
+- replace the UI's prototype authentication with the backend bearer-token flow;
+- add a minimal workspace edition choice for Personal or Professional;
+- build the responsive product shell and edition-appropriate initial Today pages;
+- retain practical transaction, recurring-item, profile, account, and member workflows;
+- test Personal and shared-household workflows first with the founder's real usage;
+- expose the same truthful manual foundation to Professional without advanced professional claims;
+- show only backend-supported budget and upcoming-item information;
+- add deployment configuration, secrets handling, logs, health checks, and repeatable CI/CD;
+- deploy FastAPI, Reflex, and PostgreSQL to a private Azure environment.
 
-Risks:
+Explicitly out of scope:
 
-- Current pseudo-auth is unsafe.
-- UI is temporary.
-- Migrations may not upgrade existing data safely.
+- genuine safe-to-spend, tax reserve, or runway claims;
+- CSV import, OCR, bank aggregation, automated opportunity ingestion, or agents;
+- production billing, broad public onboarding, or production-grade scale.
 
-Success metrics:
+Exit gate:
 
-- Fresh setup works from README.
-- Tests pass.
-- A user can create an account, add expenses, see totals, and manage members.
+- a live Azure URL is available to the founder and invited testers;
+- onboarding can create or enter Personal and Professional workspace contexts;
+- login, account selection, expense creation/search, recurring review, budget snapshot, and sign-out work end to end;
+- the founder can use the Personal/Household path repeatedly without encountering Professional-only language;
+- non-local environments do not permit `X-User-Id` authentication;
+- CI, migrations, health checks, logs, and database backup behavior are verified;
+- no known critical account-scoping or financial-correctness defect remains;
+- known product limitations are visible and honestly labeled.
 
-Exit criteria:
+### Phase 2 - Personal And Household Decision MVP
 
-- No known critical correctness bugs.
-- No global data leaks in API reads.
-- A clean branch can be used as the new build base.
+Directional target: first half of 2027.
 
-## Phase 1: Freelancer Cash-Flow MVP
+Outcome: the founder and a small Personal/Household cohort use the product through repeated financial cycles and can judge whether its decisions reduce everyday uncertainty.
 
-Objective: Deliver a narrow product that helps freelancers decide what they can safely do with money.
+In scope:
 
-Target users: Freelancers, consultants, solo professionals.
+- manual and CSV transaction import with review and duplicate handling;
+- household income, available-to-spend v0, upcoming bills, goals, and reserves;
+- clearer shared contributions, responsibility, and member review flows;
+- a rules-first action inbox with evidence and feedback;
+- weekly summaries;
+- a small curated Greek household benefit and voucher catalogue with manual eligibility guidance;
+- concise exports needed for household review.
 
-Problems addressed:
+Exit gate:
 
-- Irregular income.
-- Tax reserve planning.
-- Upcoming bills.
-- Safe-to-spend uncertainty.
+- pilot users understand how the headline figures are calculated;
+- users return weekly and act on or meaningfully dismiss recommendations;
+- available-to-spend and shared-responsibility calculations have fixtures and explainable evidence;
+- at least a small cohort reports reduced uncertainty and repeated practical value.
 
-Features:
+### Phase 3 - Professional Decision MVP
 
-- Safe-to-spend v0.
-- Manual or CSV transaction import.
-- Upcoming bills from recurring templates.
-- Monthly income and irregular income profile.
-- Tax reserve estimate.
-- Tax and administrative deadline reminders v0.
-- Cash runway.
-- Weekly financial summary.
-- Action inbox with explainable recommendations.
-- Scheduled pattern insights with simple impact simulations.
+Directional target: second half of 2027, after the Personal/Household decision gate.
 
-Technical work:
+Outcome: freelancers use the Professional edition through at least four weekly financial cycles while the validated Personal/Household edition remains available.
 
-- Import pipeline.
-- Transaction normalization.
-- Rules-based recommendation engine.
-- Notification-ready event model.
-- Audit log for recommendations.
-- Basic insight evaluation fixtures.
-- Deadline calendar model.
-- Scheduled insight generation job.
+In scope:
 
-Dependencies:
+- irregular-income modeling, safe-to-spend or safe-to-pay-yourself, tax reserve, runway, and upcoming obligations;
+- invoice and client-payment tracking at the minimum level required for cash-flow decisions;
+- a Professional action inbox, weekly summary, and curated Greek professional deadlines;
+- extension of the shared opportunity model from household benefits to professional grants and funding;
+- edition-aware profile matching and manual eligibility guidance;
+- limited tier experiments based on demonstrated value.
 
-- Stable transaction model.
-- Reliable financial profile.
-- Recurring template engine.
+Exit gate:
 
-Risks:
+- freelancers understand and trust the Professional headline calculations;
+- Personal and Professional users see only relevant workflows and opportunities;
+- one identity can safely participate in multiple workspace contexts;
+- both editions reuse shared platform capabilities without scattered edition conditionals;
+- at least a small Professional cohort reports reduced uncertainty and willingness to pay.
 
-- Safe-to-spend logic must be trusted.
-- Users may not maintain manual data.
+### Phase 4 - Trusted Automation And Full Rollout
 
-Success metrics:
+Target: evidence-gated; no committed date.
 
-- Users check the Today page at least weekly.
-- Users act on recommendations.
-- Users mark pattern insights as useful rather than noisy.
-- Users avoid or prepare for at least one deadline.
-- Users report lower uncertainty about spending.
-- At least a small cohort expresses willingness to pay.
+Outcome: both editions can support paid rollout with useful automation and bounded, auditable intelligence.
 
-Exit criteria:
+Candidate scope, admitted only by evidence:
 
-- 5 to 10 pilot users complete four weekly cycles.
-- Safe-to-spend and runway are understandable and trusted.
+- receipt and document extraction, categorization assistance, and review queues;
+- richer invoice and client-payment workflows for Professional;
+- automated eligibility assessment for supported opportunities;
+- proactive pattern, anomaly, and deadline intelligence;
+- billing, tier enforcement, data export/deletion, retention controls, and operational support;
+- bank or accounting integrations where manual/CSV workflows have proven recurring demand;
+- approved agent actions only after policy, evidence, audit, and rollback foundations exist.
 
-## Phase 2: Automation And Document Intelligence
+Exit gate:
 
-Objective: Reduce manual work and improve data quality.
+- paid users repeatedly receive measurable decision value or time savings;
+- recommendation and eligibility quality can be evaluated and monitored;
+- privacy, security, data lifecycle, support, and reliability are ready for the intended audience;
+- automated actions remain bounded, explainable, and reversible where possible.
 
-Target users: Paid individual/professional users.
+## Scope Discipline
 
-Problems addressed:
+To keep the roadmap executable:
 
-- Manual transaction entry.
-- Receipt organization.
-- Categorization errors.
-- Missing tax/accounting records.
+- only one phase is active at a time;
+- Personal/Household is the first acceptance path in Phase 1 and the only edition receiving deep decision features in Phase 2;
+- Professional receives the shared Phase 1 foundation, then becomes the decision-feature focus in Phase 3;
+- keep at most three active workstreams: product, reliability/security, and deployment;
+- every feature must support the current phase outcome or remain in the backlog;
+- every phase must leave a deployable, testable product;
+- agents may accelerate bounded research, implementation, review, testing, and documentation, but product decisions and release acceptance remain human-owned;
+- do not expand scope merely because agent capacity is available.
 
-Features:
+## Deferred Until Evidence Requires Them
 
-- Receipt OCR.
-- PDF/image storage.
-- Intelligent transaction categorization.
-- Duplicate detection.
-- Subscription detection.
-- CSV/PDF exports.
-- Recommendation confidence and evidence display.
+- broad global consumer positioning;
+- full bank aggregation;
+- broad legal or law-change monitoring;
+- autonomous agents;
+- microservices;
+- complex simulations;
+- decorative dashboards, social features, and gamification without decision value;
+- small-business accounting replacement.
 
-Technical work:
+## Immediate Focus
 
-- File storage.
-- OCR provider integration.
-- Document extraction pipeline.
-- Review queue.
-- Categorization model or LLM classifier.
-- Evaluation set for extraction and classification.
-- PII handling and retention policies.
+Phase 1 is the only current commitment. The next planning unit should be a short sequence of deployable vertical slices:
 
-Dependencies:
-
-- Auth and data governance.
-- Storage layer.
-- Background jobs.
-
-Risks:
-
-- OCR and AI costs.
-- Privacy concerns.
-- Extraction quality.
-
-Success metrics:
-
-- Reduced manual data-entry time.
-- High accepted categorization rate.
-- Low correction rate for extracted receipts.
-
-Exit criteria:
-
-- Users import or upload data repeatedly.
-- Document intelligence materially improves retention.
-
-## Phase 3: Proactive Financial Intelligence
-
-Objective: Detect risk before the user notices it.
-
-Target users: Pro users and small teams.
-
-Problems addressed:
-
-- Spending drift.
-- Cash-flow surprises.
-- Underfunded goals or taxes.
-- Unusual activity.
-
-Features:
-
-- Anomaly detection.
-- Behavioral spending insights.
-- Repeated-behavior detection, such as weekly/monthly habit patterns.
-- Recommendation impact simulation.
-- Predictive burn rate.
-- Goal impact analysis.
-- Self-adjusting goal projections.
-- Cash-flow calendar.
-- What changed since last week.
-- Notification preferences for alerts, digests, and deadlines.
-
-Technical work:
-
-- Time-series features.
-- Baseline and anomaly models.
-- Forecasting service module.
-- Explanation generation.
-- Insight ranking.
-- Offline evaluation.
-- User feedback loop for accepted, dismissed, irrelevant, and snoozed insights.
-- Alert throttling to avoid notification fatigue.
-
-Dependencies:
-
-- Clean historical transaction data.
-- User feedback loop.
-
-Risks:
-
-- False positives can destroy trust.
-- Insights can become noise.
-
-Success metrics:
-
-- Alert precision.
-- Recommendation acceptance.
-- Reduced churn among active users.
-
-Exit criteria:
-
-- Users rely on alerts and weekly summary as a habit.
-
-## Phase 4: Agentic Workflows
-
-Objective: Move from recommendations to approved actions.
-
-Target users: Advanced professionals and small businesses.
-
-Problems addressed:
-
-- Repetitive financial operations.
-- Receipt matching.
-- Invoice follow-up.
-- Reporting.
-- Cost optimization.
-
-Features:
-
-- Action inbox.
-- Agent-generated reports.
-- Invoice/payment monitoring.
-- Deadline monitoring and reminder escalation.
-- Funding opportunity watchlist for eligible users.
-- Regulatory/law-change watchlist as a separate bounded capability or external service integration.
-- Drafted vendor/client emails.
-- Subscription cancellation guidance.
-- Tax reserve and transfer recommendations.
-- Accounting export workflows.
-
-Technical work:
-
-- Agent orchestration layer.
-- Tool registry.
-- Approval policy engine.
-- Action ledger.
-- Rollback/undo where possible.
-- Guardrails and output validation.
-- Human confirmation for risky actions.
-
-Dependencies:
-
-- Auth.
-- Audit logs.
-- Integrations.
-- Evaluation framework.
-- Trusted external data sources for deadlines, funding, and law-change monitoring.
-
-Risks:
-
-- Regulatory boundaries.
-- User trust.
-- Bad automated actions.
-
-Success metrics:
-
-- Approved actions per active user.
-- Time saved.
-- Low reversal or complaint rate.
-
-Exit criteria:
-
-- Agents reliably perform bounded workflows with clear evidence and approvals.
-
-## Phase 5: Business Expansion
-
-Objective: Expand into freelancers, startups, and small businesses.
-
-Target users: Small teams, agencies, startups, SMBs.
-
-Problems addressed:
-
-- Business cash-flow forecasting.
-- Expense/revenue intelligence.
-- Invoice and payment monitoring.
-- Reporting.
-- Operational alerts.
-
-Features:
-
-- Team roles and approvals.
-- Business cash-flow forecast.
-- Invoice tracking.
-- Revenue and expense intelligence.
-- Scenario planning.
-- Cost optimization.
-- Export to accounting tools.
-
-Technical work:
-
-- Organization model.
-- Business entities.
-- Integrations.
-- More robust workflow engine.
-- Observability and SLAs.
-- Data retention controls.
-
-Risks:
-
-- Accounting complexity.
-- Integration maintenance.
-- Support burden.
-
-Success metrics:
-
-- Paid conversion.
-- Retention.
-- Forecast accuracy.
-- Report/export usage.
-
-Exit criteria:
-
-- Business users pay for operational workflows, not just dashboards.
-
-## Features To Remove Or Postpone
-
-Postpone:
-
-- Gamified savings challenges.
-- Full bank aggregation before validation.
-- Full autonomous agents.
-- Broad legal/law-change monitoring before narrow professional deadline validation.
-- Business microservices.
-- Complex simulations.
-- Broad global consumer positioning.
-
-Potentially remove from near-term scope:
-
-- Decorative chatbot UI.
-- Generic charts that do not drive decisions.
-- Social features not tied to a clear financial outcome.
-
-## Validation Plan
-
-Before expensive features:
-
-- Interview freelancers and solo professionals.
-- Run a concierge weekly financial report.
-- Test fake-door buttons for safe-to-spend, OCR, anomaly alerts, and tax reserve.
-- Run a concierge "Friday pattern" or "weekly leak" report for pilot users.
-- Run a concierge professional-deadline calendar for freelancers.
-- Test fake-door buttons for funding alerts and law-change alerts before building source monitoring.
-- Validate willingness to pay before bank aggregation.
-- Use CSV uploads before regulated financial account aggregation.
-
-Critical assumptions:
-
-- Users will share/import financial data if value is clear.
-- Safe-to-spend is more valuable than generic budgets.
-- Users want specific pattern recommendations more than generic charts.
-- Professionals will pay for deadline/opportunity monitoring if alerts are accurate and timely.
-- Law-change monitoring is valuable enough to justify a separate service only if source coverage and applicability can be trusted.
-- Freelancers will pay for tax/runway clarity.
-- Explainable recommendations build trust.
-
-## Recommended Next Product Step
-
-Build the Today page around:
-
-- Safe-to-spend.
-- Upcoming bills.
-- Month-end projection.
-- Tax reserve status.
-- Action inbox.
-- Pattern insights and recommendation simulations.
-- Deadline reminders.
-- Recent important transactions.
-
-This page should become the product's identity.
+1. prove the Reflex/FastAPI/PostgreSQL Azure topology;
+2. complete secure UI authentication and introduce the minimal edition-aware workspace context;
+3. build the Personal/Household shell and truthful Today page first;
+4. add the basic Professional composition on the same shared components;
+5. harden the manual workflows, automate deployment, and run the private-release checklist.
