@@ -1,5 +1,12 @@
 name: CI
 
+# Security invariants: these jobs run pull-request and hook code.
+# - Trigger stays `pull_request`: never `pull_request_target`, and never a `workflow_run`
+#   workflow that consumes these runs.
+# - The token stays read-only, and no job gets secrets or `id-token: write`.
+# - Every checkout uses `persist-credentials: false`; a push-triggered workflow must not
+#   save caches from jobs that run pull-request, hook, or test code.
+
 on:
   pull_request:
     branches:
@@ -12,10 +19,15 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          # Full history for the gitleaks history scan.
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -30,14 +42,12 @@ jobs:
       - name: Sync dependencies
         run: uv sync --locked
 
-      - name: Lint
-        run: uv run ruff check .
-
-      - name: Check formatting
-        run: uv run ruff format --check .
+      - name: Run pre-commit hooks
+        run: uv run pre-commit run --all-files --hook-stage manual --show-diff-on-failure
 
   tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     services:
       postgres:
@@ -59,6 +69,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -73,11 +85,12 @@ jobs:
       - name: Sync dependencies
         run: uv sync --locked
 
-      - name: Run tests
-        run: uv run pytest
+      - name: Run tests with coverage
+        run: uv run pytest --cov=app --cov-report=term-missing
 
   migrations:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     services:
       postgres:
@@ -100,6 +113,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@v7

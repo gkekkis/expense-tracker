@@ -13,7 +13,7 @@ The repository is a Python modular monolith with:
 - no frontend in the working tree yet: the React and TypeScript rebuild has not started, and the removed Reflex 0.8 prototype remains in the git history;
 - signed bearer-token authentication, account-scoped authorization helpers, and audit logging;
 - a tracked backend Dockerfile;
-- GitHub Actions jobs for Ruff, pytest, and migration smoke testing;
+- GitHub Actions jobs on pull requests for the pre-commit hooks (file hygiene, Ruff, and a gitleaks history scan), pytest with a branch-coverage threshold, and migration smoke testing;
 - a PostgreSQL-backed pytest suite;
 - a manually verified Azure development backend foundation: Azure Container Registry, Container Apps and Log Analytics, PostgreSQL Flexible Server, Key Vault, a user-assigned managed identity, explicit Alembic migration execution, and an HTTPS FastAPI health check.
 
@@ -217,7 +217,7 @@ Every behavior change should begin with the narrowest relevant test and expand a
 
 Before the Phase 1 Azure draft:
 
-- Ruff, pytest, and fresh-database migration jobs pass in CI;
+- pre-commit, pytest with coverage, and fresh-database migration jobs pass in CI;
 - authentication and account-scoping tests cover every exposed resource family;
 - a production-mode frontend build succeeds;
 - browser smoke tests cover login, account entry, expense creation/search, and sign-out;

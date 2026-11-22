@@ -42,6 +42,7 @@ This document is a supporting debt register. Rollout sequence is governed by `do
 - Restricted global user discovery to local prototype flows and added authenticated exact-email user search.
 - Added environment-driven CORS configuration for frontend/API browser access.
 - Added internal audit logs for account, membership, expense, and financial-profile mutations.
+- Added the pre-commit hooks, including a gitleaks scan of the pull request's history, and pytest with a branch-coverage threshold to CI; upgraded Ruff to 0.17.6 with a single version pin in `uv.lock` (2026-11-22).
 
 ## Priority 0: Phase 1 Deployment Baseline
 
@@ -51,7 +52,9 @@ This document is a supporting debt register. Rollout sequence is governed by `do
 - Add a production build and deployment path for the rebuilt frontend.
 - Add Azure infrastructure, secrets, health checks, logs, migration execution, and rollback documentation.
 - Add deployment automation after CI succeeds.
-- Run the pre-commit hooks and pytest with coverage in CI (`pytest-cov` is already a dev dependency), with an agreed coverage threshold.
+- Raise the CI coverage threshold (`fail_under` in `pyproject.toml`; 76% branch coverage on 2026-11-22) as tests are added.
+- Pin `actions/checkout` and `actions/setup-python` to commit SHAs, as `astral-sh/setup-uv` already is.
+- Upgrade `pre-commit` from 3.6.2 to 4.x and re-verify the hook configuration.
 
 ## Priority 1: Security And Data Isolation
 
@@ -59,6 +62,8 @@ This document is a supporting debt register. Rollout sequence is governed by `do
 - Enforce VIEWER read-only behavior in backend services.
 - Use bearer-token authentication and `/auth/me` in the rebuilt frontend.
 - Complete the endpoint-by-role authorization matrix before inviting external testers.
+- Decide whether workflow runs from fork pull requests require approval (repository setting) before outside contributions are accepted.
+- Ignore `.env.*` in `.gitignore` while keeping `.env.example` tracked; today only a file named exactly `.env` is ignored.
 
 ## Priority 2: Database And Migration Health
 
